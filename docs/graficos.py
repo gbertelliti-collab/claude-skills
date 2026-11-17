@@ -295,12 +295,76 @@ def grafico_custo(t, d):
         "%s %s%% dos agentes e %s%% do custo" % (k, br(100.0 * v["agentes"] / cu["agentes"]), br(v["pct"])) for k, v in ordem), c)
 
 
+def caixa(cx, y, w, h, nome, sub, t, destaque=False):
+    out = ['<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="10" fill="%s" stroke="%s" stroke-width="%s"/>'
+           % (cx - w / 2.0, y, w, h, t["cartao"], t["s1"] if destaque else t["borda"], 2 if destaque else 1)]
+    out.append(texto(cx, y + h / 2.0 - (2 if sub else -5), nome, 14, t["tinta"], 600, "middle"))
+    if sub:
+        out.append(texto(cx, y + h / 2.0 + 16, sub, 11.5, t["tinta2"], 400, "middle"))
+    return out
+
+
+def ponta(x, y, direcao, cor):
+    """Cabeca de seta com a ponta em (x, y)."""
+    d = {"direita": "M%.1f %.1fl-7 -4v8z", "baixo": "M%.1f %.1fl-4 -7h8z", "cima": "M%.1f %.1fl-4 7h8z"}[direcao]
+    return '<path d="%s" fill="%s"/>' % (d % (x, y), cor)
+
+
+def ciclo(t):
+    passos = [("Ficha", "rota de cada tipo"), ("Quebrar", "tipo, dono, aceite"), ("Brief", "tudo desenhado"),
+              ("Despachar", "em paralelo"), ("Conferir", "chefe roda o aceite"), ("Registrar", "1 linha por tarefa")]
+    w, vao, y, h = 124.0, 19.2, 8.0, 62.0
+    fio = 'stroke="%s" stroke-width="1.5" fill="none"' % t["tinta3"]
+    halo = 'stroke="%s" stroke-width="5" paint-order="stroke" stroke-linejoin="round"' % t["fundo"]
+    c, centros = [], []
+    for i, (nome, sub) in enumerate(passos):
+        cx = w / 2.0 + i * (w + vao)
+        centros.append(cx)
+        c += caixa(cx, y, w, h, nome, sub, t, destaque=(nome == "Conferir"))
+        if i:
+            x0 = cx - w / 2.0 - vao
+            c.append('<path d="M%.1f %.1fH%.1f" %s/>' % (x0 + 2, y + h / 2.0, x0 + vao - 7, fio))
+            c.append(ponta(x0 + vao - 1, y + h / 2.0, "direita", t["tinta3"]))
+    # volta da correcao, embaixo de Conferir
+    cc = centros[4]
+    c += caixa(cc, 112, w, 46, "Corrigir", "até 3 rodadas", t)
+    c.append('<path d="M%.1f %.1fV%.1f" %s/>' % (cc - 30, y + h + 2, 112 - 8, fio))
+    c.append(ponta(cc - 30, 112 - 1, "baixo", t["tinta3"]))
+    c.append('<path d="M%.1f %.1fV%.1f" %s/>' % (cc + 30, 112 - 2, y + h + 8, fio))
+    c.append(ponta(cc + 30, y + h + 1, "cima", t["tinta3"]))
+    c.append(texto(cc - 38, 96, "não passou", 11, t["tinta2"], 400, "end"))
+    # a ficha aprende: de Registrar de volta para Ficha
+    cr, cf, yb = centros[5], centros[0], 186.0
+    c.append('<path d="M%.1f %.1fV%.1fH%.1fV%.1f" %s stroke-dasharray="4 4"/>' % (cr, y + h + 2, yb, cf, y + h + 8, fio))
+    c.append(ponta(cf, y + h + 1, "cima", t["tinta3"]))
+    c.append(texto(250, yb + 4, "a ficha aprende: a próxima tarefa do tipo já sai com rota e avisos", 12, t["tinta2"], 500, "middle", halo))
+    return svg(840, 200, "Ciclo do chefe: ficha, quebrar, brief, despachar, conferir (se não passou, corrigir em até 3 rodadas) "
+               "e registrar; o registro volta para a ficha, que aprende", c)
+
+
+def modo_god(t):
+    fio = 'stroke="%s" stroke-width="1.5" fill="none"' % t["tinta3"]
+    c = []
+    c.append('<path d="M420 70V92M210 92H630M210 92V112M630 92V112" %s stroke-dasharray="4 4"/>' % fio)
+    for cm in (210, 630):
+        c.append('<path d="M%d 174V196M%d 196H%dM%d 196V214M%d 196V214M%d 196V214" %s/>'
+                 % (cm, cm - 138, cm + 138, cm - 138, cm, cm + 138, fio))
+    c += caixa(420, 8, 300, 62, "engenheiro · Fable", "3 visitas: planta, consulta, vistoria", t, destaque=True)
+    for cm, frente in ((210, "frente A"), (630, "frente B")):
+        c += caixa(cm, 112, 230, 62, "mestre de obras · Opus", frente + ": quebra, despacha, confere", t)
+        for dx, nome, modelo in ((-138, "leitor", "Haiku"), (0, "executor", "Sonnet"), (138, "revisor", "Sonnet")):
+            c += caixa(cm + dx, 214, 124, 56, nome, modelo, t)
+    return svg(840, 278, "Modo god: um engenheiro em Fable faz 3 visitas; 2 mestres de obras em Opus tocam uma frente cada, "
+               "cada um com leitor Haiku, executor Sonnet e revisor Sonnet", c)
+
+
 def desenhar(d):
     if not os.path.isdir(IMG):
         os.makedirs(IMG)
     for nome_tema, t in TEMAS.items():
         for nome, conteudo in (("banner", banner(t)), ("numeros", blocos(t, d)),
-                               ("tipos", grafico_tipos(t, d)), ("custo", grafico_custo(t, d))):
+                               ("tipos", grafico_tipos(t, d)), ("custo", grafico_custo(t, d)),
+                               ("ciclo", ciclo(t)), ("modo-god", modo_god(t))):
             caminho = os.path.join(IMG, "%s-%s.svg" % (nome, nome_tema))
             with io.open(caminho, "w", encoding="utf-8", newline="\n") as f:
                 f.write(conteudo)

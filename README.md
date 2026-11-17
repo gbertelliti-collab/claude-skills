@@ -112,17 +112,10 @@ Lições que o registro guardou de tarefas que passaram de primeira e que hoje e
 
 ## Como funciona
 
-```mermaid
-flowchart LR
-    F["1 · Ficha<br/>rota por tipo de tarefa"] --> Q["2 · Quebrar<br/>tipo, dono, aceite"]
-    Q --> B["3 e 4 · Rota e brief<br/>tudo desenhado"]
-    B --> D["5 · Despachar<br/>em paralelo"]
-    D --> C{"6 · Conferir<br/>o chefe roda o aceite"}
-    C -- passou --> R["8 · Registrar<br/>1 linha por tarefa"]
-    C -- não passou --> X["7 · Corrigir<br/>até 3 rodadas"]
-    X --> C
-    R -. a ficha aprende .-> F
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/ciclo-escuro.svg">
+  <img alt="Ciclo do chefe: ficha, quebrar, brief, despachar, conferir e registrar. Se a entrega não passa na conferência, volta para correção em até 3 rodadas. O registro alimenta a ficha, e a próxima tarefa do mesmo tipo já sai com rota e avisos." src="docs/img/ciclo-claro.svg" width="100%">
+</picture>
 
 - **O chefe decide, o operário executa.** Arquitetura, regra de negócio, deploy e o veredito de "pronto" ficam com a sessão. Operário recebe objetivo, escopo, fontes, restrições, formato de entrega e o aceite que será rodado.
 - **"Feito" sem prova não é feito.** O chefe roda o aceite ele mesmo, e aceite que não consegue falhar não vale: em dinheiro, acesso e segurança, desfaz a mudança, vê o teste cair e restaura.
@@ -144,18 +137,10 @@ flowchart LR
 
 Quando o trabalho se parte em 2 frentes que não se tocam e passa de umas 8 tarefas, o chefe vira engenheiro e sai da obra: faz 3 visitas (a análise que vira a planta, a consulta quando um mestre trava, a vistoria no fim) e deixa 2 mestres de obras tocando os operários.
 
-```mermaid
-flowchart TB
-    E["Engenheiro · Fable<br/>3 visitas: planta, consulta, vistoria"]
-    E --> M1["Mestre de obras · Opus<br/>frente A"]
-    E --> M2["Mestre de obras · Opus<br/>frente B"]
-    M1 --> A1["leitor · Haiku"]
-    M1 --> A2["executor · Sonnet"]
-    M1 --> A3["revisor · Sonnet"]
-    M2 --> B1["leitor · Haiku"]
-    M2 --> B2["executor · Sonnet"]
-    M2 --> B3["revisor · Sonnet"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/modo-god-escuro.svg">
+  <img alt="Modo god: um engenheiro em Fable faz 3 visitas (planta, consulta, vistoria); 2 mestres de obras em Opus tocam uma frente cada, cada um com leitor Haiku, executor Sonnet e revisor Sonnet." src="docs/img/modo-god-claro.svg" width="100%">
+</picture>
 
 No uso real, 34 dos 346 agentes rodaram assim, no segundo andar (operário aberto por um mestre), e custaram 0,9% do total; os 3 mestres somaram 1,1%. O andar caro é o engenheiro, e é por isso que ele só faz visita. Detalhes em [`modo-god.md`](plugins/orquestrador/skills/orquestrador/modo-god.md).
 

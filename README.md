@@ -7,6 +7,7 @@
   <img alt="Plugin do Claude Code" src="https://img.shields.io/badge/Claude%20Code-plugin-D97757">
   <img alt="Python 3, sem dependências" src="https://img.shields.io/badge/Python%203-sem%20depend%C3%AAncias-3776AB">
   <img alt="91 testes no motor" src="https://img.shields.io/badge/testes%20do%20motor-91-2ea44f">
+  <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
   <img alt="Último commit" src="https://img.shields.io/github/last-commit/gbertelliti-collab/claude-skills?label=%C3%BAltimo%20commit">
 </p>
 
@@ -310,4 +311,6 @@ python docs/graficos.py --coletar
 
 O repositório traz só números agregados do uso: nenhum brief real, nenhum nome de projeto e nenhuma tabela de projetos. A ficha de quem instala começa vazia e aprende com o próprio uso. O registro, a ficha e o `PROJETOS.md` que você preencher ficam só na sua máquina (estão no `.gitignore`).
 
-Ainda não há arquivo de licença.
+## Licença
+
+[MIT](LICENSE). Pode usar, copiar, mudar e redistribuir, mantendo o aviso de copyright.

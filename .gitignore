@@ -1,0 +1,13 @@
+# tabela de projetos de quem usa (tem dado seu): nunca vai pro repositorio
+PROJETOS.md
+# registro e ficha locais do motor
+registro.jsonl
+registro.jsonl.trava
+*.trava
+# python
+__pycache__/
+*.pyc
+# ambiente e segredo
+.env
+*.env
+*.pem

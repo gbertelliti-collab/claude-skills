@@ -1,0 +1,8 @@
+{
+  "name": "orquestrador",
+  "version": "0.1.0",
+  "author": {
+    "name": "Gabriel Bertelli"
+  },
+  "description": "Orquestrador de operarios (Haiku e Sonnet) com ficha que aprende, modo god, auditoria adversarial, prova na tela e conferencia de valores"
+}

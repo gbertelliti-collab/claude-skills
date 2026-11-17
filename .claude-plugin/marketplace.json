@@ -1,0 +1,14 @@
+{
+  "name": "gbertelli-skills",
+  "description": "Skills e agentes para orquestrar trabalho com varios agentes no Claude Code",
+  "owner": {
+    "name": "Gabriel Bertelli"
+  },
+  "plugins": [
+    {
+      "name": "orquestrador",
+      "source": "./plugins/orquestrador",
+      "description": "Orquestrador de operarios (Haiku e Sonnet) com ficha que aprende, modo god, auditoria adversarial, prova na tela e conferencia de valores"
+    }
+  ]
+}

@@ -53,6 +53,9 @@ Leia so pra mudar uma regra ou um limiar. Nao e pra carregar em todo trabalho.
 | Sem escrita no git com executor vivo | Controlador commitou arquivos de um implementador em background **[USO REAL]** | obra/superpowers#2520 |
 | Executor nao apaga por curinga | Subagente apagou temporarios de outros no scratchpad compartilhado **[USO REAL, so titulo lido]** | anthropics/claude-code#104804 |
 | Arquivo de estado em trabalho longo | Queda no meio re-despachou trabalho ja commitado; sous-chef guarda o contador em arquivo e le o arquivo apos compactar **[USO REAL]** | obra/superpowers#2293, tomascupr/sous-chef |
+| `retomar` e hook depois de compactar ou retomar a sessao | Superpowers reinjeta contexto por hook SessionStart com matcher `startup, clear, compact`; a doc do Claude Code lista `compact` e `resume` como origem da sessao e soma o stdout do hook ao contexto; em uso real, uma sessao reiniciada no meio da obra voltou sem saber quais operarios ja tinha despachado **[OFICIAL + USO REAL, conferido]** | github.com/obra/superpowers (hooks/hooks.json), code.claude.com/docs/en/hooks.md |
+| Operario derrubado por limite de uso sobe de modelo e vira `anulado` | sous-chef usa Sonnet como reserva quando o worker principal estoura a cota no meio da tarefa **[USO REAL, so o README lido]** | github.com/tomascupr/sous-chef |
+| Tabela de precos editavel e rotulo de estimativa no `custo.py` | ccusage deixa sobrescrever preco por modelo num arquivo de config; Claude-Code-Usage-Monitor separa numero oficial de estimativa local **[USO REAL, conferido no README]** | github.com/ryoppippi/ccusage, github.com/Maciek-roboblog/Claude-Code-Usage-Monitor |
 | Achado menor vai pro relatorio | Achados adiados sumiram junto com a pasta de trabalho **[USO REAL]** | obra/superpowers#2253 |
 
 ## O que o uso real ensinou

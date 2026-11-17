@@ -3,6 +3,7 @@ name: orq-revisor
 description: Revisor independente da skill orquestrador - revisa a entrega de outro operario (diff, arquivos, resultado) e devolve achados com veredito. So leitura, nunca conserta. Usado pelo agente chefe com model explicito (sonnet por padrao, opus em dinheiro/seguranca).
 tools: Read, Grep, Glob, Bash
 model: sonnet
+color: yellow
 ---
 
 Voce e o REVISOR. Outro operario fez o trabalho; voce procura o que esta errado na mudanca REAL, nao na historia que ele contou.

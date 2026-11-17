@@ -5,7 +5,7 @@
 Registra como cada operario (haiku/sonnet/opus) se saiu em cada tarefa e devolve
 uma ficha com a rota recomendada aprendida do historico.
 
-Comandos: status, registrar, ficha, conferir, resumo, atualizar.
+Comandos: status, registrar, ficha, conferir, retomar, resumo, atualizar.
 Variaveis de ambiente: ORQ_REGISTRO (registro; padrao ~/.claude/orquestrador/registro.jsonl),
 ORQ_FICHA (arquivo .md onde `atualizar` grava a ficha; sem ela `atualizar` so avisa e sai 0),
 ORQ_PROJECTS (transcripts; padrao ~/.claude/projects).
@@ -552,6 +552,116 @@ def cmd_conferir(args):
             linha += ", %d sem modelo" % cont["SEM-MODELO"]
         print(linha)
     return 3 if (cont["DIVERGIU"] or cont["ANDAR-3"] or cont["SEM-MODELO"]) else 0
+
+
+def _sessao_do_hook():
+    """session_id do JSON em stdin (so se nao for terminal); erro = None."""
+    try:
+        if sys.stdin is None or sys.stdin.isatty():
+            return None
+        bruto = getattr(sys.stdin, "buffer", None)
+        if bruto is not None:   # bytes: o encoding padrao do Windows quebra em caminho com acento
+            texto = bruto.read().decode("utf-8", "replace")
+        else:
+            texto = sys.stdin.read()
+        d = json.loads(texto)
+        s = d.get("session_id") if isinstance(d, dict) else None
+        return s if isinstance(s, str) and s else None
+    except Exception:
+        return None
+
+
+_TAG_OPERARIO = re.compile(r"^\s*\[(?:%s)[:\]]" % "|".join(ALIASES))
+
+
+def _e_operario(meta_path, descricao):
+    """So conta o que o orquestrador despachou: papel orq-* (com ou sem prefixo de plugin) ou
+    descricao no formato [modelo:tipo]. Subagente comum do usuario (Explore, general-purpose
+    sem a etiqueta) fica de fora: o hook roda em toda sessao de quem instalou o plugin."""
+    try:
+        meta = _ler_json(meta_path)
+    except Exception:
+        meta = {}
+    papel = meta.get("agentType") if isinstance(meta, dict) else None
+    if isinstance(papel, str) and papel.rsplit(":", 1)[-1].startswith("orq-"):
+        return True
+    return bool(_TAG_OPERARIO.match(descricao or ""))
+
+
+def cmd_retomar(args):
+    if args.hook:
+        try:
+            return _retomar(args)
+        except Exception:
+            return 0
+    return _retomar(args)
+
+
+def _retomar(args):
+    hook = args.hook
+    try:
+        seg = _parse_janela(args.desde)
+    except ValueError as e:
+        if hook:
+            return 0
+        print("erro: %s" % e, file=sys.stderr)
+        return 13
+    sessao = args.sessao
+    if not sessao and hook:
+        sessao = _sessao_do_hook()
+    if not sessao:
+        sessao = sessao_atual()
+    if not sessao:
+        if hook:
+            return 0
+        print("erro: sem sessao (use --sessao ID ou rode dentro do Claude Code)", file=sys.stderr)
+        return 2
+    metas = _achar_metas(p_projects(), time.time() - seg, sessao)
+    ags = []
+    for m in metas:
+        a = analisar_agente(m)
+        if _e_operario(m, a.get("descricao")):
+            ags.append(a)
+    if not ags:
+        if hook:
+            return 0
+        if args.json:
+            print(json.dumps({"sessao": sessao, "operarios": 0, "registrados": 0,
+                              "sem_registro": [], "resultados": {}}))
+        else:
+            print("nenhum operario encontrado na sessao %s (janela de %s)" % (sessao, args.desde))
+        return 10
+    regs = [r for r in ler_registro() if r.get("sessao") == sessao]
+    ids_reg = set(r.get("agente") for r in regs if r.get("agente"))
+    ags.sort(key=lambda a: a["agente"])
+    sem = [a for a in ags if a["agente"] not in ids_reg]
+    n_reg = len(ags) - len(sem)
+    cont = {}
+    for r in regs:
+        cont[r["resultado"]] = cont.get(r["resultado"], 0) + 1
+    res = [(k, cont[k]) for k in RESULTADOS if cont.get(k, 0) > 0]
+    if args.json:
+        print(json.dumps({
+            "sessao": sessao, "operarios": len(ags), "registrados": n_reg,
+            "sem_registro": [{"agente": a["agente"], "descricao": a["descricao"],
+                              "reais": a["reais"], "respostas": a["respostas"]} for a in sem],
+            "resultados": dict(res)}, ensure_ascii=False))
+        return 0
+    n = len(ags)
+    print("orquestrador: esta sessao ja despachou %d operario%s (%d registrados, %d sem registro)." % (
+        n, "" if n == 1 else "s", n_reg, len(sem)))
+    if sem:
+        print("sem registro (confira a entrega e registre; o que nao rodou e anulado):")
+        for a in sem[:15]:
+            print("  - %s | modelo real: %s | %d respostas" % (
+                a["descricao"] or "(sem descricao)", ",".join(a["reais"]) or "-", a["respostas"]))
+        if len(sem) > 15:
+            print("  ... e mais %d" % (len(sem) - 15))
+    if res:
+        print("registrados: " + ", ".join("%d %s" % (v, k) for k, v in res))
+    print("proximo passo do chefe: reler o arquivo de estado se houver, rodar `conferir` e dizer "
+          "ao usuario quem esta vivo e o que falta.")
+    return 0
 
 
 # ----------------------------------------------------------------------------
@@ -1392,6 +1502,13 @@ def montar_parser():
     c.add_argument("--todas", action="store_true", help="todas as sessoes (padrao: sessao atual)")
     c.add_argument("--sessao", help="id de uma sessao especifica")
     c.set_defaults(fn=cmd_conferir)
+
+    t = sub.add_parser("retomar", help="diz quais operarios a sessao despachou e quais faltam registrar")
+    t.add_argument("--sessao", help="id da sessao (padrao: sessao atual)")
+    t.add_argument("--desde", default="7d", help="Nh ou Nd (padrao 7d)")
+    t.add_argument("--json", action="store_true")
+    t.add_argument("--hook", action="store_true", help="modo silencioso para hook de sessao")
+    t.set_defaults(fn=cmd_retomar)
 
     u = sub.add_parser("resumo", help="1 linha com os registros da janela")
     u.add_argument("--desde", default="12h", help="Nh ou Nd (padrao 12h)")

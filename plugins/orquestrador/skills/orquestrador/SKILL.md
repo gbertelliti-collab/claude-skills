@@ -7,7 +7,7 @@ description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de c
 
 A sessao e o chefe: pensa, decide, confere e integra. Operarios Haiku e Sonnet leem e digitam. Toda tarefa delegada vira 1 linha no registro; a ficha que sai do registro diz quem recebe a proxima tarefa daquele tipo e quanto detalhe o brief leva.
 
-Motor: `python <pasta desta skill>/operarios.py <status|ficha|registrar|conferir|resumo|atualizar>` (`--help` em cada um; o Claude Code informa a pasta da skill quando ela carrega). O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
+Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|conferir|retomar|resumo|atualizar>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
 
 Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
 
@@ -49,7 +49,7 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 - Execucao nunca em `general-purpose` ou `claude`: papel `orq-*` com `model`. Opcional: a env `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` faz agente SEM `model` nascer em Sonnet em vez de herdar o modelo da sessao; quer Opus, passe `model: "opus"` na chamada, com motivo. Opus em executor so com motivo escrito. Mestre e Opus, nao Fable. (Vale pra agente generico; um `orq-*` sem `model` usa o `model` do frontmatter dele, e `Explore`/`Plan` nao mudam com a env.) A regra do usuario ou do projeto vence.
 - Contexto do chefe pequeno: resumo de operario, saida grande em arquivo (gravado por `orq-executor`: leitor e revisor nao gravam), nada de colar diff ou log; nao acorde so pra olhar status; fechou uma obra, compacte ou abra sessao nova antes da proxima.
 - Nao faca: cache de 1 hora em subagente (piora 8%); tirar o arquivo de instrucoes do projeto dos operarios (ganha 0,8% e eles perdem as regras do projeto).
-- Onde foi o token desta sessao: `python <pasta desta skill>/custo.py` (`--do-registro` pra todas as sessoes).
+- Onde foi o token desta sessao: `python "${CLAUDE_SKILL_DIR}/custo.py"` (`--do-registro` pra todas as sessoes).
 
 ## Ciclo
 
@@ -75,7 +75,7 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 
 Na duvida entre mecanica e logica: logica. Tipo errado suja a ficha do tipo certo.
 
-Escala: fato simples = 1 leitor; comparacao ou mapa de repo = 2 a 4 leitores; codigo = 1 leitor pra mapear, o chefe decide, 1 a 3 executores de arquivos separados. Teto padrao de 4 ao mesmo tempo; o usuario ou o README do projeto podem dar outro (anote o teto e o recurso que limita: memoria, um emulador so, um banco). Passou do teto: segure a revisao e o que depende de outra tarefa; entram na 1a vaga. Mais de 5 tarefas: arquivo de estado (1 linha por tarefa), escrito so pelo chefe; depois de compactar o contexto, leia o arquivo. Duas frentes que nao se tocam e 8 ou mais tarefas: `modo-god.md`.
+Escala: fato simples = 1 leitor; comparacao ou mapa de repo = 2 a 4 leitores; codigo = 1 leitor pra mapear, o chefe decide, 1 a 3 executores de arquivos separados. Teto padrao de 4 ao mesmo tempo; o usuario ou o README do projeto podem dar outro (anote o teto e o recurso que limita: memoria, um emulador so, um banco). Passou do teto: segure a revisao e o que depende de outra tarefa; entram na 1a vaga. Mais de 5 tarefas: arquivo de estado (1 linha por tarefa), escrito so pelo chefe; depois de compactar ou retomar a sessao, leia o arquivo e rode `retomar` (o que a sessao despachou e ainda nao registrou; o hook do plugin ja traz isso sozinho). Duas frentes que nao se tocam e 8 ou mais tarefas: `modo-god.md`.
 
 **3. Rota.** Use modelo, brief e effort da ficha; pode divergir com motivo de 1 linha.
 
@@ -120,6 +120,7 @@ Brief DESENHADO e o padrao: o operario nao conhece a conversa, o projeto nem a s
 - Papel `orq-*` nao existe na sessao (aberta antes da instalacao do plugin)? `general-purpose` com o mesmo `model` e a ordem de ler o arquivo `agents/orq-<papel>.md` do plugin orquestrador.
 - Enquanto um executor esta vivo, o chefe nao escreve no git (add, commit, stash, checkout) nem edita os arquivos dele.
 - Brief barrado pelo classificador de seguranca, ou tarefa que nem rodou: reescreva o enquadramento ou faca voce, e registre `anulado`.
+- Operario derrubado por limite de uso ou erro de API (nao por erro dele): redespache no modelo seguinte da escada com o mesmo brief e registre `anulado` pro que caiu.
 
 **6. Conferir** (o chefe, nunca a palavra do operario):
 
@@ -149,9 +150,9 @@ Atalho: se, pra escrever o proximo brief, voce ja achou a causa e o conserto cab
 **8. Registrar** cada tarefa ao fechar, a que deu certo E a que deu errado, antes de seguir:
 
 ```
-python <pasta desta skill>/operarios.py registrar --agente "[haiku:front] cartao na lista de clientes" --resultado escalado --rodadas 2 --brief 3 --experimento --erro "escopo: nao trocou o cartao na versao de celular" --erro "borda: lista vazia quebrava" --projeto meu-app
-python <pasta desta skill>/operarios.py registrar --agente "[sonnet:front] cartao na lista de clientes" --resultado de_primeira --rodadas 0 --brief 3 --licao "colar o cartao pronto e listar os 2 arquivos (desktop e celular)" --projeto meu-app
-python <pasta desta skill>/operarios.py registrar --tipo leitura --modelo sonnet --resultado anulado --rodadas 0 --brief 2 --projeto meu-app --tarefa "servicos exportados (brief barrado pelo classificador)"
+python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[haiku:front] cartao na lista de clientes" --resultado escalado --rodadas 2 --brief 3 --experimento --erro "escopo: nao trocou o cartao na versao de celular" --erro "borda: lista vazia quebrava" --projeto meu-app
+python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[sonnet:front] cartao na lista de clientes" --resultado de_primeira --rodadas 0 --brief 3 --licao "colar o cartao pronto e listar os 2 arquivos (desktop e celular)" --projeto meu-app
+python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --tipo leitura --modelo sonnet --resultado anulado --rodadas 0 --brief 2 --projeto meu-app --tarefa "servicos exportados (brief barrado pelo classificador)"
 ```
 
 - `--agente` = a `description` do despacho: o script le no transcript o modelo que rodou DE VERDADE, o tipo, os tokens, quem e o mestre, e guarda o brief como exemplo quando passou de primeira. Sem transcript (tarefa `anulado`): `--tipo` e `--modelo` na mao.

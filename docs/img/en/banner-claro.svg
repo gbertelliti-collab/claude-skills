@@ -8,7 +8,7 @@
 <text x="40" y="165" font-size="16" fill="#59636e" font-weight="400" text-anchor="start">that read and type, and a scorecard that learns</text>
 <text x="40" y="188" font-size="16" fill="#59636e" font-weight="400" text-anchor="start">who should get the next task.</text>
 <rect x="40" y="205" width="79" height="24" rx="12" fill="#ffffff" stroke="#d1d9e0"/>
-<text x="79.5" y="221.5" font-size="12" fill="#59636e" font-weight="500" text-anchor="middle">4 skills</text>
+<text x="79.5" y="221.5" font-size="12" fill="#59636e" font-weight="500" text-anchor="middle">5 skills</text>
 <rect x="127" y="205" width="79" height="24" rx="12" fill="#ffffff" stroke="#d1d9e0"/>
 <text x="166.5" y="221.5" font-size="12" fill="#59636e" font-weight="500" text-anchor="middle">5 agents</text>
 <rect x="214" y="205" width="148" height="24" rx="12" fill="#ffffff" stroke="#d1d9e0"/>

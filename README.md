@@ -296,8 +296,8 @@ O brief que o executor recebeu nesse exemplo está inteiro em [`exemplos/brief-n
 ### O motor
 
 ```bash
-python <pasta da skill>/operarios.py <status|ficha|registrar|conferir|resumo|atualizar>
-python <pasta da skill>/custo.py [--do-registro]
+python <pasta da skill>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar>
+python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
 O Claude Code informa a pasta da skill quando ela carrega, e quem roda esses comandos no dia a dia é o próprio chefe. Para ter ideia do que sai, isto é um trecho da ficha real em 17/11/2026 (lições encurtadas):
@@ -327,6 +327,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | `ORQ_REGISTRO` | arquivo do registro de tarefas | `~/.claude/orquestrador/registro.jsonl` |
 | `ORQ_FICHA` | arquivo `.md` onde `operarios.py atualizar` grava a ficha | sem ela, `atualizar` só avisa e sai com código 0 |
 | `ORQ_PROJECTS` | pasta dos transcripts do Claude Code | `~/.claude/projects` |
+| `ORQ_PRECOS` | arquivo JSON que sobrescreve preços da tabela do `custo.py` (o mesmo que `--precos`; `--mostrar-precos` imprime a tabela atual para você salvar e editar) | tabela interna, com a data em que foi lida |
 
 - **Nome dos agentes:** agente de plugin leva o prefixo do plugin, então o `subagent_type` é `orquestrador:orq-leitor`, `orquestrador:orq-executor` e assim por diante. Se a sua versão do Claude Code mostrar os agentes sem prefixo, use o nome simples.
 - **`PROJETOS.md`:** `provar-na-tela` e `bater-valores` leem um `PROJETOS.md` opcional na pasta de cada skill (como subir, entrar e conferir cada projeto seu). Copie o `PROJETOS.exemplo.md` e preencha; sem ele, as skills usam o README do projeto.
@@ -339,12 +340,16 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | [`auditoria-adversarial`](plugins/orquestrador/skills/auditoria-adversarial/SKILL.md) | "varredura", "auditoria do projeto", "análise adversarial" | varre o projeto inteiro com vários agentes, prova cada achado e corrige no mesmo dia |
 | [`provar-na-tela`](plugins/orquestrador/skills/provar-na-tela/SKILL.md) | antes de dizer "pronto" numa mudança visual | abre a tela de verdade, tira o print e compara com o pedido |
 | [`bater-valores`](plugins/orquestrador/skills/bater-valores/SKILL.md) | "não bate", "faltando", "pagou 2x" | roteiro para divergência de valor, com as causas comuns e a prova |
+| [`placar`](plugins/orquestrador/skills/placar/SKILL.md) | só quando você digita `/orquestrador:placar` | mostra o que a sessão despachou e ainda não registrou, quem acerta de primeira por modelo e para onde foi o token |
+
+**Retomada automática.** O plugin traz um hook de início de sessão que só age depois que o contexto compacta ou a sessão é retomada: se a sessão já tinha despachado operários, ele devolve ao chefe a lista de quem ficou sem registro (o mesmo que `operarios.py retomar`). Sem operários, não imprime nada. Ele só lê os transcripts locais e precisa de Python 3 e de `sh` (no Windows, o Git Bash).
 
 ```text
 .claude-plugin/marketplace.json     o marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        o plugin (sem número de versão: cada commit é uma versão)
-  agents/                           os 5 papéis orq-*
+  agents/                           os 5 papéis orq-*, cada um com sua cor na lista de tarefas
+  hooks/                            retomada depois de compactar ou retomar a sessão
   skills/
     orquestrador/
       SKILL.md                      o ciclo do chefe
@@ -357,11 +362,12 @@ plugins/orquestrador/
     auditoria-adversarial/
     provar-na-tela/
     bater-valores/
+    placar/                         o comando /orquestrador:placar
 docs/
   uso-real.json                     os números agregados deste README
   graficos.py                       gera os gráficos a partir deles
   readme_blocos.py                  preenche os trechos com número deste README
-  tests/                            testes do gerador
+  tests/                            testes do gerador e da estrutura do plugin
 ```
 
 Para rodar os testes:
@@ -371,6 +377,12 @@ cd plugins/orquestrador/skills/orquestrador
 python -m unittest discover -s tests
 ```
 
+Os testes da estrutura do plugin e do gerador do README rodam da raiz:
+
+```bash
+python -m unittest discover -s docs/tests
+```
+
 Para gerar o mesmo retrato com o seu uso (lê o seu registro e os seus transcripts, grava só números agregados):
 
 ```bash
@@ -378,6 +390,8 @@ python docs/graficos.py --coletar
 ```
 
 E `python docs/graficos.py --conferir` acusa se o README ou alguma imagem saiu do passo com o JSON; é o que roda a cada push.
+
+O que mudou em cada data está no [CHANGELOG](CHANGELOG.md). Para contribuir, veja o [CONTRIBUTING](CONTRIBUTING.md); para relatar falha de segurança, o [SECURITY](SECURITY.md).
 
 ## Privacidade
 

@@ -995,5 +995,174 @@ class TestCusto(Base):
         self.assertEqual(operarios._fmt_mi(0), "0,00M")
 
 
+class TestRetomar(Base):
+    def agente(self, sessao, nome, desc, modelo="claude-sonnet-5-5"):
+        sub = os.path.join(self.projects, "proj", sessao, "subagents")
+        os.makedirs(operarios._long(sub), exist_ok=True)
+        with io.open(operarios._long(os.path.join(sub, "agent-%s.meta.json" % nome)), "w",
+                     encoding="utf-8") as f:
+            json.dump({"description": desc, "model": "sonnet"}, f)
+        with io.open(operarios._long(os.path.join(sub, "agent-%s.jsonl" % nome)), "w",
+                     encoding="utf-8") as f:
+            f.write(json.dumps({"type": "assistant", "message": {
+                "id": "m1", "model": modelo, "usage": {"output_tokens": 10}}}) + "\n")
+
+    def reg_ag(self, sessao, nome, resultado):
+        self.grava("edicao-logica", "sonnet", resultado, sessao=sessao, agente="agent-%s" % nome)
+
+    def run_in(self, entrada, *args):
+        return subprocess.run([sys.executable, SCRIPT] + list(args), env=self.env, input=entrada,
+                              capture_output=True, text=True, encoding="utf-8")
+
+    def cenario3(self):
+        self.agente("S", "a1", "[sonnet:edicao-logica] um")
+        self.agente("S", "a2", "[sonnet:edicao-logica] dois")
+        self.agente("S", "a3", "[sonnet:edicao-logica] tres")
+        self.reg_ag("S", "a1", "de_primeira")
+        self.reg_ag("S", "a2", "corrigido")
+
+    def test_1_parcial(self):
+        self.cenario3()
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout.splitlines()[0],
+                         "orquestrador: esta sessao ja despachou 3 operarios (2 registrados, 1 sem registro).")
+        self.assertIn("tres", p.stdout)
+        self.assertNotIn("] um", p.stdout)
+        self.assertNotIn("] dois", p.stdout)
+        self.assertIn("registrados: 1 de_primeira, 1 corrigido", p.stdout)
+        self.assertIn("modelo real: claude-sonnet-5-5 | 1 respostas", p.stdout)
+
+    def test_2_todos_registrados(self):
+        self.cenario3()
+        self.reg_ag("S", "a3", "falhou")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("sem registro (", p.stdout)
+        self.assertIn("registrados:", p.stdout)
+
+    def test_3_nenhum_registrado(self):
+        self.agente("S", "a1", "[sonnet:edicao-logica] um")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("1 operario (0 registrados, 1 sem registro)", p.stdout)
+        self.assertNotIn("registrados:", p.stdout)
+
+    def test_4_sem_agente(self):
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 10)
+        self.assertIn("nenhum operario", p.stdout)
+
+    def test_5_sem_sessao(self):
+        p = self.run_in("", "retomar")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("sem sessao", p.stderr)
+
+    def test_6_hook_stdin(self):
+        self.cenario3()
+        p = self.run_in('{"session_id": "S", "source": "compact"}', "retomar", "--hook")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout.splitlines()[0],
+                         "orquestrador: esta sessao ja despachou 3 operarios (2 registrados, 1 sem registro).")
+        self.assertIn("registrados: 1 de_primeira, 1 corrigido", p.stdout)
+
+    def test_7_hook_stdin_vazio(self):
+        p = self.run_in("", "retomar", "--hook")
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.stdout, "")
+        self.assertEqual(p.stderr, "")
+
+    def test_8_hook_stdin_lixo(self):
+        p = self.run_in("isto nao e json", "retomar", "--hook")
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.stdout, "")
+        self.assertEqual(p.stderr, "")
+
+    def test_9_hook_sessao_sem_agente(self):
+        p = self.run_in('{"session_id": "VAZIA"}', "retomar", "--hook")
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.stdout, "")
+
+    def test_10_registro_de_outra_sessao(self):
+        self.agente("S", "a1", "[sonnet:edicao-logica] um")
+        self.reg_ag("OUTRA", "a1", "de_primeira")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("(0 registrados, 1 sem registro)", p.stdout)
+        self.assertNotIn("registrados:", p.stdout)
+
+    def test_11_limite_de_15(self):
+        for i in range(17):
+            self.agente("S", "b%02d" % i, "[sonnet:edicao-logica] t%02d" % i)
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(sum(1 for l in p.stdout.splitlines() if l.startswith("  - ")), 15)
+        self.assertIn("  ... e mais 2", p.stdout.splitlines())
+
+    def test_12_json(self):
+        self.cenario3()
+        p = self.run_op("retomar", "--sessao", "S", "--json")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        d = json.loads(p.stdout)
+        self.assertEqual(d["operarios"], 3)
+        self.assertEqual(d["registrados"], 2)
+        self.assertEqual(len(d["sem_registro"]), 1)
+        self.assertEqual(d["resultados"], {"de_primeira": 1, "corrigido": 1})
+
+    def test_13_desde_invalido(self):
+        self.cenario3()
+        p = self.run_op("retomar", "--sessao", "S", "--desde", "abc")
+        self.assertEqual(p.returncode, 13)
+        p = self.run_in("", "retomar", "--sessao", "S", "--desde", "abc", "--hook")
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.stdout, "")
+        self.assertEqual(p.stderr, "")
+
+    def papel(self, sessao, nome, desc, papel):
+        """Agente com agentType no meta (o que o Claude Code grava)."""
+        self.agente(sessao, nome, desc)
+        meta = os.path.join(self.projects, "proj", sessao, "subagents", "agent-%s.meta.json" % nome)
+        with io.open(operarios._long(meta), "w", encoding="utf-8") as f:
+            json.dump({"description": desc, "model": "sonnet", "agentType": papel}, f)
+
+    def test_14_subagente_comum_fica_de_fora(self):
+        # so subagente do usuario (sem papel orq-* e sem etiqueta): o hook nao pode dizer nada
+        self.papel("S", "x1", "Explore code", "Explore")
+        self.papel("S", "x2", "pesquisar a doc", "general-purpose")
+        p = self.run_in(json.dumps({"session_id": "S"}), "retomar", "--hook")
+        self.assertEqual(p.returncode, 0)
+        self.assertEqual(p.stdout, "")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 10)
+        # junto com um operario de verdade, so ele conta
+        self.agente("S", "a1", "[sonnet:edicao-logica] um")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("ja despachou 1 operario (0 registrados, 1 sem registro).", p.stdout)
+        self.assertNotIn("Explore code", p.stdout)
+        self.assertNotIn("pesquisar a doc", p.stdout)
+
+    def test_15_papel_orq_conta_mesmo_sem_etiqueta(self):
+        self.papel("S", "p1", "ler os logs", "orq-leitor")
+        self.papel("S", "p2", "mexer no arquivo", "orquestrador:orq-executor")
+        self.papel("S", "p3", "[haiku:busca] achar o simbolo", "general-purpose")
+        p = self.run_op("retomar", "--sessao", "S")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("ja despachou 3 operarios (0 registrados, 3 sem registro).", p.stdout)
+
+    def test_16_hook_stdin_em_bytes_utf8(self):
+        # byte 0x81 (do A com acento em utf-8) nao existe no cp1252: lido como texto no Windows, quebrava
+        self.cenario3()
+        entrada = json.dumps({"session_id": "S", "cwd": "C:/" + chr(193) + "rea"},
+                             ensure_ascii=False).encode("utf-8")
+        env = dict(self.env)
+        env.pop("PYTHONIOENCODING", None)
+        env.pop("PYTHONUTF8", None)
+        p = subprocess.run([sys.executable, SCRIPT, "retomar", "--hook"], env=env, input=entrada,
+                           capture_output=True)
+        self.assertEqual(p.returncode, 0)
+        self.assertIn(b"ja despachou 3 operarios", p.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4,5 +4,16 @@
     "name": "Gabriel Bertelli"
   },
   "license": "MIT",
+  "homepage": "https://github.com/gbertelliti-collab/claude-skills#readme",
+  "repository": "https://github.com/gbertelliti-collab/claude-skills",
+  "keywords": [
+    "orchestration",
+    "subagents",
+    "multi-agent",
+    "model-routing",
+    "cost",
+    "code-review",
+    "pt-br"
+  ],
   "description": "Orquestrador de operarios (Haiku e Sonnet) com ficha que aprende, modo god, auditoria adversarial, prova na tela e conferencia de valores"
 }

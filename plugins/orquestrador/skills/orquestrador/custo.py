@@ -5,9 +5,11 @@ Uso:
   python custo.py --do-registro      sessoes citadas no registro do orquestrador
   python custo.py --sessao <ID>      so uma sessao
   python custo.py                    sessao atual (env CLAUDE_CODE_SESSION_ID)
-  opcoes: --json  --top N
+  opcoes: --json  --top N  --precos ARQUIVO  --mostrar-precos
+  --precos: JSON que sobrescreve/acrescenta precos (veja --mostrar-precos); --mostrar-precos imprime a tabela e sai.
 
-Env: ORQ_PROJECTS (padrao ~/.claude/projects), ORQ_REGISTRO (padrao ~/.claude/orquestrador/registro.jsonl).
+Env: ORQ_PROJECTS (padrao ~/.claude/projects), ORQ_REGISTRO (padrao ~/.claude/orquestrador/registro.jsonl),
+ORQ_PRECOS (arquivo de precos, igual a --precos).
 So le numeros e o campo description do meta; nao copia conversa.
 """
 import argparse
@@ -31,6 +33,56 @@ PRECO = {
     "claude-fable-5-1":  {"entrada": 10.0, "saida": 50.0, "leitura": 0.025},
     "claude-fable-5":    {"entrada": 10.0, "saida": 50.0, "leitura": 0.10},
 }
+PRECO_LIDO_EM = "2026-11-16"
+
+
+def _num(v, minimo_exclusivo):
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return False
+    if v != v or v in (float("inf"), float("-inf")):   # NaN e infinito: o JSON de saida sairia invalido
+        return False
+    return v > 0 if minimo_exclusivo else v >= 0
+
+
+def carregar_precos(caminho):
+    """Le um JSON de precos. Devolve (dict_validado, None) ou (None, mensagem). Nao altera PRECO."""
+    try:
+        with open(caminho, "r", encoding="utf-8-sig") as fh:
+            dados = json.load(fh)
+    except FileNotFoundError:
+        return None, "precos invalido: arquivo nao existe: %s" % caminho
+    except (OSError, UnicodeDecodeError) as e:
+        return None, "precos invalido: nao consegui ler %s: %s" % (caminho, e)
+    except ValueError as e:
+        return None, "precos invalido: nao e JSON: %s" % e
+    if not isinstance(dados, dict):
+        return None, "precos invalido: o topo precisa ser um objeto"
+    out = {}
+    for nome, v in dados.items():
+        if not isinstance(nome, str) or not nome.strip():
+            return None, "precos invalido: nome de modelo vazio"
+        if not isinstance(v, dict):
+            return None, "precos invalido: %s: valor precisa ser objeto" % nome
+        extra = set(v) - {"entrada", "saida", "leitura", "acima_100k"}
+        if extra:
+            return None, "precos invalido: %s: chave desconhecida: %s" % (nome, ", ".join(sorted(map(str, extra))))
+        if not _num(v.get("entrada"), True):
+            return None, "precos invalido: %s: entrada precisa ser numero maior que zero" % nome
+        if not _num(v.get("saida"), True):
+            return None, "precos invalido: %s: saida precisa ser numero maior que zero" % nome
+        if not _num(v.get("leitura"), False):
+            return None, "precos invalido: %s: leitura obrigatoria, numero >= 0" % nome
+        item = {"entrada": v["entrada"], "saida": v["saida"], "leitura": v["leitura"]}
+        if "acima_100k" in v:
+            f = v["acima_100k"]
+            if not isinstance(f, dict) or set(f) != {"entrada", "saida"} \
+                    or not _num(f.get("entrada"), True) or not _num(f.get("saida"), True):
+                return None, "precos invalido: %s: acima_100k precisa de entrada e saida numericos maiores que zero" % nome
+            item["acima_100k"] = {"entrada": f["entrada"], "saida": f["saida"]}
+        out[nome.strip().lower()] = item
+    return out, None
+
+
 PADRAO_DA_FAMILIA = {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5", "fable": "claude-fable-5-2"}
 CHAVE_FALLBACK = "claude-sonnet-5-5"   # familia desconhecida
 UNIDADE = "claude-haiku-5-5"           # custo = tokens de entrada equivalentes do Haiku 5.5 (US$ 0,10/MTok)
@@ -409,6 +461,14 @@ def imprimir(res):
             [[k, _n(v["custo"]), _p(v["economia_pct"])] for k, v in res["simulacao"].items()])
     print("sessoes: %d | sem_transcript: %d" % (len(res["sessoes"]), res["sem_transcript"]))
     print("custo = tokens de entrada equivalentes do Haiku 5.5 (US$ 0,10/MTok); precos de API")
+    p = res.get("precos")
+    if p:
+        if p.get("arquivo"):
+            n = len(p.get("sobrescritos") or [])
+            print("precos: tabela interna lida em %s + %d %s de %s (estimativa a preco de tabela)"
+                  % (p["lido_em"], n, "modelo" if n == 1 else "modelos", p["arquivo"]))
+        else:
+            print("precos: tabela interna lida em %s (estimativa a preco de tabela; mude com --precos)" % p["lido_em"])
 
 
 def main(argv=None):
@@ -421,10 +481,24 @@ def main(argv=None):
     ap.add_argument("--sessao")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--precos", metavar="ARQUIVO")
+    ap.add_argument("--mostrar-precos", action="store_true")
     a = ap.parse_args(argv)
     if a.top < 1:
         sys.stderr.write("--top precisa ser >= 1\n")
         return 2
+    caminho = a.precos or os.environ.get("ORQ_PRECOS") or None
+    sobrescritos = []
+    if caminho:
+        novos, erro = carregar_precos(caminho)
+        if erro:
+            sys.stderr.write(erro + "\n")
+            return 2
+        PRECO.update(novos)
+        sobrescritos = sorted(novos)
+    if a.mostrar_precos:
+        print(json.dumps(PRECO, ensure_ascii=False, indent=1, sort_keys=True))
+        return 0
     if a.sessao:
         sessoes = [a.sessao]
     elif a.do_registro:
@@ -438,6 +512,7 @@ def main(argv=None):
     projects = os.environ.get("ORQ_PROJECTS") or os.path.join(os.path.expanduser("~"), ".claude", "projects")
     agentes, sem = coletar(sessoes, projects)
     res = agregar(agentes, sessoes, sem, a.top)
+    res["precos"] = {"lido_em": PRECO_LIDO_EM, "arquivo": caminho, "sobrescritos": sobrescritos}
     if a.json:
         print(json.dumps(res, ensure_ascii=False, indent=1))
     else:

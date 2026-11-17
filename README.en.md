@@ -296,8 +296,8 @@ The brief the executor received in this example is in full at [`exemplos/brief-n
 ### The engine
 
 ```bash
-python <skill folder>/operarios.py <status|ficha|registrar|conferir|resumo|atualizar>
-python <skill folder>/custo.py [--do-registro]
+python <skill folder>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar>
+python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
 Claude Code reports the skill folder when it loads, and the lead itself runs these commands day to day. To get an idea of the output, this is an excerpt of the real scorecard on Nov 17, 2026 (lessons shortened). The engine prints in Portuguese:
@@ -327,6 +327,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | `ORQ_REGISTRO` | task log file | `~/.claude/orquestrador/registro.jsonl` |
 | `ORQ_FICHA` | `.md` file where `operarios.py atualizar` writes the scorecard | without it, `atualizar` only warns and exits with code 0 |
 | `ORQ_PROJECTS` | folder of the Claude Code transcripts | `~/.claude/projects` |
+| `ORQ_PRECOS` | JSON file that overrides prices in the `custo.py` table (same as `--precos`; `--mostrar-precos` prints the current table for you to save and edit) | built-in table, with the date it was read |
 
 - **Agent names:** a plugin agent carries the plugin prefix, so the `subagent_type` is `orquestrador:orq-leitor`, `orquestrador:orq-executor` and so on. If your version of Claude Code shows the agents without a prefix, use the plain name.
 - **`PROJETOS.md`:** `provar-na-tela` and `bater-valores` read an optional `PROJETOS.md` in each skill's folder (how to start, log in and check each of your projects). Copy `PROJETOS.exemplo.md` and fill it in; without it, the skills use the project's README.
@@ -339,12 +340,16 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | [`auditoria-adversarial`](plugins/orquestrador/skills/auditoria-adversarial/SKILL.md) | "varredura" (sweep), "auditoria do projeto" (project audit), "análise adversarial" (adversarial analysis) | sweeps the whole project with several agents, proves each finding and fixes it the same day |
 | [`provar-na-tela`](plugins/orquestrador/skills/provar-na-tela/SKILL.md) | before saying "done" on a visual change | opens the screen for real, takes the screenshot and compares it with the request |
 | [`bater-valores`](plugins/orquestrador/skills/bater-valores/SKILL.md) | "não bate" (doesn't match), "faltando" (missing), "pagou 2x" (paid twice) | script for value mismatches, with the common causes and the proof |
+| [`placar`](plugins/orquestrador/skills/placar/SKILL.md) | only when you type `/orquestrador:placar` | shows what the session dispatched and has not logged yet, who gets it right first time per model, and where the tokens went |
+
+**Automatic resume.** The plugin ships a session-start hook that only acts after the context compacts or the session is resumed: if the session had already dispatched workers, it hands the lead the list of those not logged yet (the same as `operarios.py retomar`). With no workers it prints nothing. It only reads local transcripts and needs Python 3 and `sh` (on Windows, Git Bash).
 
 ```text
 .claude-plugin/marketplace.json     the marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        the plugin (no version number: each commit is a version)
-  agents/                           the 5 orq-* roles
+  agents/                           the 5 orq-* roles, each with its own color in the task list
+  hooks/                            resume after the context compacts or the session restarts
   skills/
     orquestrador/
       SKILL.md                      the lead's cycle
@@ -357,11 +362,12 @@ plugins/orquestrador/
     auditoria-adversarial/
     provar-na-tela/
     bater-valores/
+    placar/                         the /orquestrador:placar command
 docs/
   uso-real.json                     the aggregated numbers of this README
   graficos.py                       generates the charts from them
   readme_blocos.py                  fills in the numeric parts of this README
-  tests/                            generator tests
+  tests/                            tests of the generator and of the plugin structure
 ```
 
 To run the tests:
@@ -371,6 +377,12 @@ cd plugins/orquestrador/skills/orquestrador
 python -m unittest discover -s tests
 ```
 
+The tests of the plugin structure and of the README generator run from the root:
+
+```bash
+python -m unittest discover -s docs/tests
+```
+
 To generate the same snapshot with your own usage (reads your log and your transcripts, writes only aggregated numbers):
 
 ```bash
@@ -378,6 +390,8 @@ python docs/graficos.py --coletar
 ```
 
 And `python docs/graficos.py --conferir` flags if the README or any image drifted out of sync with the JSON; it is what runs on every push.
+
+What changed on each date is in the [CHANGELOG](CHANGELOG.md). To contribute, see [CONTRIBUTING](CONTRIBUTING.md); to report a security issue, [SECURITY](SECURITY.md).
 
 ## Privacy
 

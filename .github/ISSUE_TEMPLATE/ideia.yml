@@ -1,0 +1,36 @@
+name: Ideia ou melhoria
+description: Sugira uma mudança ou uma regra nova
+labels: [melhoria]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qual problema isso resolve
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: O que você propõe
+    validations:
+      required: true
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidência (caso real, medição ou link)
+    validations:
+      required: false
+  - type: dropdown
+    id: onde-mexe
+    attributes:
+      label: Onde mexe
+      options:
+        - skill orquestrador
+        - modo god
+        - auditoria-adversarial
+        - provar-na-tela
+        - bater-valores
+        - motor (operarios.py/custo.py)
+        - README e documentos
+    validations:
+      required: true

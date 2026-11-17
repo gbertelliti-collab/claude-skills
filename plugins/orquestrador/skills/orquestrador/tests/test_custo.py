@@ -37,6 +37,7 @@ class Base(unittest.TestCase):
         self.env["ORQ_REGISTRO"] = self.registro
         self.env["PYTHONIOENCODING"] = "utf-8"
         self.env.pop("CLAUDE_CODE_SESSION_ID", None)
+        self.env.pop("ORQ_PRECOS", None)
 
     def tearDown(self):
         shutil.rmtree(custo._long(self.tmp), ignore_errors=True)
@@ -216,6 +217,111 @@ class TestCusto(Base):
         d = self.js("--sessao", SID)
         self.assertEqual(d["por_papel"]["orq-revisor"]["agentes"], 1)
         self.assertEqual(d["por_papel"]["outros"]["agentes"], 0)
+
+
+class TestPrecos(Base):
+    def arq(self, conteudo, nome="precos.json"):
+        p = os.path.join(self.tmp, nome)
+        with open(p, "w", encoding="utf-8") as fh:
+            fh.write(conteudo if isinstance(conteudo, str) else json.dumps(conteudo))
+        return p
+
+    def mostra(self, *args):
+        r = self.run_c(*args, "--mostrar-precos")
+        return r
+
+    def test_01_mostrar(self):
+        r = self.mostra()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["claude-haiku-5-5"]["entrada"], 0.1)
+
+    def test_02_acrescenta(self):
+        p = self.arq({"claude-teste-9": {"entrada": 3, "saida": 15, "leitura": 0.1}})
+        r = self.mostra("--precos", p)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        d = json.loads(r.stdout)
+        self.assertIn("claude-teste-9", d)
+        self.assertIn("claude-haiku-5-5", d)
+
+    def test_03_sobrescreve(self):
+        p = self.arq({"claude-haiku-5-5": {"entrada": 0.2, "saida": 1, "leitura": 0.1}})
+        r = self.mostra("--precos", p)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)["claude-haiku-5-5"]["entrada"], 0.2)
+
+    def test_04_nao_existe(self):
+        r = self.mostra("--precos", os.path.join(self.tmp, "nao-existe.json"))
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stderr.startswith("precos invalido:"), r.stderr)
+
+    def test_05_topo_lista(self):
+        r = self.mostra("--precos", self.arq("[1,2]"))
+        self.assertEqual(r.returncode, 2)
+        self.assertTrue(r.stderr.startswith("precos invalido:"), r.stderr)
+
+    def test_06_negativo(self):
+        r = self.mostra("--precos", self.arq({"x": {"entrada": -1, "saida": 1, "leitura": 0}}))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("x", r.stderr)
+
+    def test_07_bool(self):
+        r = self.mostra("--precos", self.arq({"x": {"entrada": True, "saida": 1, "leitura": 0}}))
+        self.assertEqual(r.returncode, 2)
+
+    def test_08_sem_leitura(self):
+        r = self.mostra("--precos", self.arq({"x": {"entrada": 1, "saida": 1}}))
+        self.assertEqual(r.returncode, 2)
+
+    def test_09_chave_estranha(self):
+        r = self.mostra("--precos", self.arq({"x": {"entrada": 1, "saida": 1, "leitura": 0, "foo": 1}}))
+        self.assertEqual(r.returncode, 2)
+
+    def test_10_env(self):
+        p = self.arq({"claude-teste-9": {"entrada": 3, "saida": 15, "leitura": 0.1}})
+        self.env["ORQ_PRECOS"] = p
+        r = self.mostra()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("claude-teste-9", json.loads(r.stdout))
+
+    def _sessao(self):
+        self.agente([linha("m1", model="claude-teste-9-xyz", inp=1000)], {"agentType": "orq-leitor"})
+        return self.arq({"claude-teste-9": {"entrada": 3, "saida": 15, "leitura": 0.1}})
+
+    def test_11_json_precos(self):
+        p = self._sessao()
+        d = self.js("--precos", p, "--sessao", SID)
+        self.assertEqual(d["precos"]["sobrescritos"], ["claude-teste-9"])
+        self.assertTrue(d["precos"]["arquivo"].endswith("precos.json"))
+        self.assertEqual(d["precos"]["lido_em"], custo.PRECO_LIDO_EM)
+
+    def test_12_texto_sem_arquivo(self):
+        self._sessao()
+        r = self.run_c("--sessao", SID)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        ultima = r.stdout.strip().splitlines()[-1]
+        self.assertTrue(ultima.startswith("precos: tabela interna lida em 2026-11-16"), ultima)
+
+    def test_13_texto_com_arquivo(self):
+        p = self._sessao()
+        r = self.run_c("--precos", p, "--sessao", SID)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("+ 1 modelo de", r.stdout.strip().splitlines()[-1])
+
+    def test_14_acima_100k(self):
+        p = self.arq({"Claude-Z": {"entrada": 1, "saida": 2, "leitura": 0, "acima_100k": {"entrada": 3, "saida": 4}}})
+        d, erro = custo.carregar_precos(p)
+        self.assertIsNone(erro)
+        self.assertEqual(d["claude-z"]["acima_100k"], {"entrada": 3, "saida": 4})
+
+    def test_15_infinito_e_nan_recusados(self):
+        for ruim in ("Infinity", "NaN", "-Infinity"):
+            with self.subTest(valor=ruim):
+                p = os.path.join(self.tmp, "ruim.json")
+                with open(p, "w", encoding="utf-8") as f:
+                    f.write('{"x": {"entrada": %s, "saida": 1, "leitura": 0}}' % ruim)
+                d, erro = custo.carregar_precos(p)
+                self.assertIsNone(d)
+                self.assertTrue(erro.startswith("precos invalido:"), erro)
 
 
 if __name__ == "__main__":

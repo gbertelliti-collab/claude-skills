@@ -1,0 +1,2 @@
+# o hook roda com sh em Linux, macOS e Git Bash: fim de linha tem que ser LF
+*.sh text eol=lf

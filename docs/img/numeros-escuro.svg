@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 140" width="840" height="140" role="img" aria-label="140 tarefas delegadas, 82% aprovadas de primeira, 2 voltaram para o chefe, 3,1% do custo nos agentes Haiku e Sonnet" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>140 tarefas delegadas, 82% aprovadas de primeira, 2 voltaram para o chefe, 3,1% do custo nos agentes Haiku e Sonnet</title>
+<rect x="0.5" y="0.5" width="197" height="139" rx="12" fill="#151b23" stroke="#3d444d"/>
+<text x="18" y="52" font-size="36" fill="#f0f6fc" font-weight="700" text-anchor="start" letter-spacing="-0.5">140</text>
+<text x="18" y="80" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="start">tarefas delegadas</text>
+<text x="18" y="102" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">em 3 dias, 4 sessões</text>
+<text x="18" y="119" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">e 8 projetos diferentes</text>
+<rect x="214.5" y="0.5" width="197" height="139" rx="12" fill="#151b23" stroke="#3d444d"/>
+<text x="232" y="52" font-size="36" fill="#f0f6fc" font-weight="700" text-anchor="start" letter-spacing="-0.5">82%</text>
+<text x="232" y="80" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="start">aprovadas de primeira</text>
+<text x="232" y="102" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">115 de 140 passaram na</text>
+<text x="232" y="119" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">1ª conferência do chefe</text>
+<rect x="428.5" y="0.5" width="197" height="139" rx="12" fill="#151b23" stroke="#3d444d"/>
+<text x="446" y="52" font-size="36" fill="#f0f6fc" font-weight="700" text-anchor="start" letter-spacing="-0.5">2</text>
+<text x="446" y="80" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="start">voltaram para o chefe</text>
+<text x="446" y="102" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">outras 23 fecharam em</text>
+<text x="446" y="119" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">até 2 rodadas de correção</text>
+<rect x="642.5" y="0.5" width="197" height="139" rx="12" fill="#151b23" stroke="#3d444d"/>
+<text x="660" y="52" font-size="36" fill="#f0f6fc" font-weight="700" text-anchor="start" letter-spacing="-0.5">3,1%</text>
+<text x="660" y="80" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="start">do custo em tokens</text>
+<text x="660" y="102" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">é o que gastaram os 130</text>
+<text x="660" y="119" font-size="12" fill="#9198a1" font-weight="400" text-anchor="start">agentes Haiku e Sonnet</text>
+</svg>

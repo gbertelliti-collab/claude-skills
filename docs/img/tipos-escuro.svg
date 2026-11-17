@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 366" width="840" height="366" role="img" aria-label="Resultado por tipo de tarefa: revisão 36 de 36 de primeira; leitura 30 de 31 de primeira; edição lógica 12 de 25 de primeira; front 13 de 21 de primeira; pesquisa web 9 de 9 de primeira; coordenação 5 de 5 de primeira; texto 5 de 5 de primeira; teste 2 de 4 de primeira; outros 3 tipos 3 de 4 de primeira" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>Resultado por tipo de tarefa: revisão 36 de 36 de primeira; leitura 30 de 31 de primeira; edição lógica 12 de 25 de primeira; front 13 de 21 de primeira; pesquisa web 9 de 9 de primeira; coordenação 5 de 5 de primeira; texto 5 de 5 de primeira; teste 2 de 4 de primeira; outros 3 tipos 3 de 4 de primeira</title>
+<text x="0" y="20" font-size="16" fill="#f0f6fc" font-weight="700" text-anchor="start">Resultado por tipo de tarefa</text>
+<text x="0" y="41" font-size="13" fill="#9198a1" font-weight="400" text-anchor="start">140 tarefas delegadas · o comprimento da barra é a quantidade de tarefas</text>
+<rect x="0" y="59" width="10" height="10" rx="2" fill="#3987e5"/>
+<text x="16" y="68" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">passou de primeira</text>
+<rect x="162" y="59" width="10" height="10" rx="2" fill="#d95926"/>
+<text x="178" y="68" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">precisou de correção</text>
+<path d="M149 84V358" stroke="#3d444d" stroke-width="1"/>
+<text x="138" y="108.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">revisão</text>
+<path d="M150.0 96.0h556.0a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-556.0z" fill="#3987e5"/>
+<text x="720.0" y="108.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">36 de 36</text>
+<text x="138" y="138.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">leitura</text>
+<rect x="150.0" y="126.0" width="464.7" height="16.0" fill="#3987e5"/>
+<path d="M616.7 126.0h11.6a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-11.6z" fill="#d95926"/>
+<text x="642.2222222222223" y="138.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">30 de 31</text>
+<text x="138" y="168.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">edição lógica</text>
+<rect x="150.0" y="156.0" width="184.7" height="16.0" fill="#3987e5"/>
+<path d="M336.7 156.0h198.2a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-198.2z" fill="#d95926"/>
+<text x="548.8888888888889" y="168.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">12 de 25</text>
+<text x="138" y="198.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">front</text>
+<rect x="150.0" y="186.0" width="200.2" height="16.0" fill="#3987e5"/>
+<path d="M352.2 186.0h120.4a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-120.4z" fill="#d95926"/>
+<text x="486.6666666666667" y="198.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">13 de 21</text>
+<text x="138" y="228.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">pesquisa web</text>
+<path d="M150.0 216.0h136.0a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-136.0z" fill="#3987e5"/>
+<text x="300.0" y="228.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">9 de 9</text>
+<text x="138" y="258.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">coordenação</text>
+<path d="M150.0 246.0h73.8a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-73.8z" fill="#3987e5"/>
+<text x="237.77777777777777" y="258.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">5 de 5</text>
+<text x="138" y="288.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">texto</text>
+<path d="M150.0 276.0h73.8a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-73.8z" fill="#3987e5"/>
+<text x="237.77777777777777" y="288.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">5 de 5</text>
+<text x="138" y="318.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">teste</text>
+<rect x="150.0" y="306.0" width="29.1" height="16.0" fill="#3987e5"/>
+<path d="M181.1 306.0h27.1a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-27.1z" fill="#d95926"/>
+<text x="222.22222222222223" y="318.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">2 de 4</text>
+<text x="138" y="348.5" font-size="13" fill="#f0f6fc" font-weight="400" text-anchor="end">outros 3 tipos</text>
+<rect x="150.0" y="336.0" width="44.7" height="16.0" fill="#3987e5"/>
+<path d="M196.7 336.0h11.6a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-11.6z" fill="#d95926"/>
+<text x="222.2222222222222" y="348.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">3 de 4</text>
+</svg>

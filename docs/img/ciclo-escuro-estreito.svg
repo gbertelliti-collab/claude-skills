@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 310" width="420" height="310" role="img" aria-label="Ciclo do chefe: ficha, quebrar, brief, despachar, conferir (se não passou, corrigir em até 3 rodadas) e registrar; o registro volta para a ficha, que aprende" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>Ciclo do chefe: ficha, quebrar, brief, despachar, conferir (se não passou, corrigir em até 3 rodadas) e registrar; o registro volta para a ficha, que aprende</title>
+<rect width="420" height="310" rx="12" fill="#0d1117"/>
+<rect x="26.0" y="8.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="84.0" y="37.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Ficha</text>
+<text x="84.0" y="55.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">rota de cada tipo</text>
+<rect x="162.0" y="8.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="220.0" y="37.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Quebrar</text>
+<text x="220.0" y="55.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">tipo, dono, aceite</text>
+<path d="M144.0 39.0H155.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M161.0 39.0l-7 -4v8z" fill="#7d8590"/>
+<rect x="298.0" y="8.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="356.0" y="37.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Brief</text>
+<text x="356.0" y="55.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">tudo desenhado</text>
+<path d="M280.0 39.0H291.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M297.0 39.0l-7 -4v8z" fill="#7d8590"/>
+<rect x="26.0" y="118.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="84.0" y="147.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Despachar</text>
+<text x="84.0" y="165.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">em paralelo</text>
+<rect x="162.0" y="118.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3987e5" stroke-width="2"/>
+<text x="220.0" y="147.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Conferir</text>
+<text x="220.0" y="165.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">chefe roda o aceite</text>
+<path d="M144.0 149.0H155.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M161.0 149.0l-7 -4v8z" fill="#7d8590"/>
+<rect x="298.0" y="118.0" width="116.0" height="62.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="356.0" y="147.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Registrar</text>
+<text x="356.0" y="165.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">1 linha por tarefa</text>
+<path d="M280.0 149.0H291.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M297.0 149.0l-7 -4v8z" fill="#7d8590"/>
+<path d="M356.0 72V94H84.0V110" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M84.0 117.0l-4 -7h8z" fill="#7d8590"/>
+<rect x="162.0" y="222.0" width="116.0" height="46.0" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="220.0" y="243.0" font-size="14" fill="#f0f6fc" font-weight="600" text-anchor="middle">Corrigir</text>
+<text x="220.0" y="261.0" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">até 3 rodadas</text>
+<path d="M190.0 182.0V214.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M190.0 221.0l-4 -7h8z" fill="#7d8590"/>
+<path d="M250.0 220.0V188.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M250.0 181.0l-4 7h8z" fill="#7d8590"/>
+<text x="182.0" y="206.0" font-size="11" fill="#9198a1" font-weight="400" text-anchor="end">não passou</text>
+<path d="M356.0 182.0V296.0H10V39.0H18.0" stroke="#7d8590" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
+<path d="M25.0 39.0l-7 -4v8z" fill="#7d8590"/>
+<text x="170" y="300.0" font-size="12" fill="#9198a1" font-weight="500" text-anchor="middle" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">a ficha aprende a rota</text>
+</svg>

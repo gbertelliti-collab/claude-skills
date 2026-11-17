@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 444" width="420" height="444" role="img" aria-label="orquestrador: Claude Code plugin with a lead, Haiku and Sonnet workers and a scorecard that learns" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>orquestrador: Claude Code plugin with a lead, Haiku and Sonnet workers and a scorecard that learns</title>
+<rect width="420" height="444" rx="12" fill="#0d1117"/>
+<rect x="0.5" y="0.5" width="419" height="443" rx="14" fill="#151b23" stroke="#3d444d"/>
+<rect x="24" y="37" width="10" height="10" rx="2" fill="#3987e5"/>
+<text x="42" y="47" font-size="12" fill="#9198a1" font-weight="600" text-anchor="start" letter-spacing="1.4">CLAUDE CODE PLUGIN</text>
+<text x="22" y="102" font-size="42" fill="#f0f6fc" font-weight="700" text-anchor="start" letter-spacing="-1">orquestrador</text>
+<text x="24" y="136" font-size="15" fill="#9198a1" font-weight="400" text-anchor="start">A lead that thinks and checks, cheap workers</text>
+<text x="24" y="159" font-size="15" fill="#9198a1" font-weight="400" text-anchor="start">that read and type, and a scorecard that learns</text>
+<text x="24" y="182" font-size="15" fill="#9198a1" font-weight="400" text-anchor="start">who should get the next task.</text>
+<rect x="24" y="199" width="79" height="24" rx="12" fill="#0d1117" stroke="#3d444d"/>
+<text x="63.5" y="215.5" font-size="12" fill="#9198a1" font-weight="500" text-anchor="middle">4 skills</text>
+<rect x="111" y="199" width="79" height="24" rx="12" fill="#0d1117" stroke="#3d444d"/>
+<text x="150.5" y="215.5" font-size="12" fill="#9198a1" font-weight="500" text-anchor="middle">5 agents</text>
+<rect x="198" y="199" width="148" height="24" rx="12" fill="#0d1117" stroke="#3d444d"/>
+<text x="272.0" y="215.5" font-size="12" fill="#9198a1" font-weight="500" text-anchor="middle">pure Python engine</text>
+<g transform="translate(-440 206)">
+<path d="M650 82V108M546 108H754M546 108V124M754 108V124M650 108V124" stroke="#7d8590" stroke-width="1.5" fill="none"/>
+<path d="M546 172V192M650 172V192M754 172V192" stroke="#7d8590" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
+<rect x="566" y="38" width="168" height="44" rx="10" fill="#0d1117" stroke="#3987e5" stroke-width="2"/>
+<text x="650" y="57" font-size="14" fill="#f0f6fc" font-weight="700" text-anchor="middle">lead</text>
+<text x="650" y="73" font-size="11" fill="#9198a1" font-weight="400" text-anchor="middle">the session: decides and checks</text>
+<rect x="500" y="124" width="92" height="48" rx="10" fill="#0d1117" stroke="#3d444d"/>
+<text x="546" y="144" font-size="13" fill="#f0f6fc" font-weight="600" text-anchor="middle">reader</text>
+<text x="546" y="161" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">Haiku</text>
+<rect x="604" y="124" width="92" height="48" rx="10" fill="#0d1117" stroke="#3d444d"/>
+<text x="650" y="144" font-size="13" fill="#f0f6fc" font-weight="600" text-anchor="middle">executor</text>
+<text x="650" y="161" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">Sonnet</text>
+<rect x="708" y="124" width="92" height="48" rx="10" fill="#0d1117" stroke="#3d444d"/>
+<text x="754" y="144" font-size="13" fill="#f0f6fc" font-weight="600" text-anchor="middle">reviewer</text>
+<text x="754" y="161" font-size="11.5" fill="#9198a1" font-weight="400" text-anchor="middle">Sonnet</text>
+<rect x="500" y="192" width="300" height="30" rx="10" fill="#0d1117" stroke="#3987e5" stroke-dasharray="4 3"/>
+<text x="650" y="211.5" font-size="11.5" fill="#9198a1" font-weight="500" text-anchor="middle">scorecard: 1 line per task, and the route adjusts</text>
+</g>
+</svg>

@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460" width="420" height="460" role="img" aria-label="Modo god: um engenheiro em Fable faz 3 visitas; 2 mestres de obras em Opus tocam uma frente cada, cada um com leitor Haiku, executor Sonnet e revisor Sonnet" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>Modo god: um engenheiro em Fable faz 3 visitas; 2 mestres de obras em Opus tocam uma frente cada, cada um com leitor Haiku, executor Sonnet e revisor Sonnet</title>
+<rect width="420" height="460" rx="12" fill="#ffffff"/>
+<path d="M210 70V104" stroke="#818b98" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
+<path d="M60 39H4V327H73" stroke="#818b98" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
+<path d="M79.0 327.0l-7 -4v8z" fill="#818b98"/>
+<rect x="60.0" y="8.0" width="300.0" height="62.0" rx="10" fill="#f6f8fa" stroke="#2a78d6" stroke-width="2"/>
+<text x="210" y="37.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">engenheiro · Fable</text>
+<text x="210" y="55.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">3 visitas: planta, consulta, vistoria</text>
+<path d="M210 166V182M72 182H348M72 182V200M210 182V200M348 182V200" stroke="#818b98" stroke-width="1.5" fill="none"/>
+<rect x="80.0" y="104.0" width="260.0" height="62.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="210" y="133.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">mestre de obras · Opus</text>
+<text x="210" y="151.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">frente A: quebra, despacha, confere</text>
+<rect x="10.0" y="200.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="72" y="226.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">leitor</text>
+<text x="72" y="244.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Haiku</text>
+<rect x="148.0" y="200.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="210" y="226.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">executor</text>
+<text x="210" y="244.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Sonnet</text>
+<rect x="286.0" y="200.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="348" y="226.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">revisor</text>
+<text x="348" y="244.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Sonnet</text>
+<path d="M210 358V374M72 374H348M72 374V392M210 374V392M348 374V392" stroke="#818b98" stroke-width="1.5" fill="none"/>
+<rect x="80.0" y="296.0" width="260.0" height="62.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="210" y="325.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">mestre de obras · Opus</text>
+<text x="210" y="343.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">frente B: quebra, despacha, confere</text>
+<rect x="10.0" y="392.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="72" y="418.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">leitor</text>
+<text x="72" y="436.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Haiku</text>
+<rect x="148.0" y="392.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="210" y="418.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">executor</text>
+<text x="210" y="436.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Sonnet</text>
+<rect x="286.0" y="392.0" width="124.0" height="56.0" rx="10" fill="#f6f8fa" stroke="#d1d9e0" stroke-width="1"/>
+<text x="348" y="418.0" font-size="14" fill="#1f2328" font-weight="600" text-anchor="middle">revisor</text>
+<text x="348" y="436.0" font-size="11.5" fill="#59636e" font-weight="400" text-anchor="middle">Sonnet</text>
+</svg>

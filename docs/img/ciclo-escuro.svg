@@ -35,7 +35,7 @@
 <path d="M604.8 111.0l-4 -7h8z" fill="#7d8590"/>
 <path d="M664.8 110.0V78.0" stroke="#7d8590" stroke-width="1.5" fill="none"/>
 <path d="M664.8 71.0l-4 7h8z" fill="#7d8590"/>
-<text x="596.8" y="96" font-size="11" fill="#9198a1" font-weight="400" text-anchor="end">não passou</text>
+<text x="596.8" y="96.0" font-size="11" fill="#9198a1" font-weight="400" text-anchor="end">não passou</text>
 <path d="M778.0 72.0V186.0H62.0V78.0" stroke="#7d8590" stroke-width="1.5" fill="none" stroke-dasharray="4 4"/>
 <path d="M62.0 71.0l-4 7h8z" fill="#7d8590"/>
 <text x="250" y="190.0" font-size="12" fill="#9198a1" font-weight="500" text-anchor="middle" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">a ficha aprende: a próxima tarefa do tipo já sai com rota e avisos</text>

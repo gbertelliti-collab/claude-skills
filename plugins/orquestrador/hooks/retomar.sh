@@ -4,8 +4,10 @@
 # Nunca falha e nunca faz barulho: sem Python 3, sem sessao ou sem operarios, sai calado.
 # So le: nao grava, nao apaga e nao usa a rede.
 
+# $0 chega sempre como <raiz do plugin>/hooks/<script>: cortar na ultima barra normal.
+# (um padrao com barra invertida entre colchetes nao fecha em sh POSIX e nao corta nada)
 case "$0" in
-  */*|*\\*) dir="${0%[/\\]*}" ;;
+  */*) dir="${0%/*}" ;;
   *) dir="." ;;
 esac
 motor="$dir/../skills/orquestrador/operarios.py"

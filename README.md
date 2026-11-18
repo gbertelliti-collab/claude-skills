@@ -233,10 +233,18 @@ Dentro de uma sessão, o equivalente é `/plugin marketplace add gbertelliti-col
 
 ## Receber atualizações
 
-O Claude Code só liga atualização automática sozinho nos marketplaces oficiais. Em marketplace de terceiro, como este, ela vem desligada e quem publica não consegue ligar por você. É um ajuste, uma vez só:
+O Claude Code só liga atualização automática sozinho nos marketplaces oficiais. Em marketplace de terceiro, como este, ela vem desligada e quem publica não consegue ligar por você. É um ajuste, uma vez só, e o plugin te ajuda a fazer:
+
+**O plugin pergunta.** Na primeira sessão depois de instalar, ele percebe que a atualização está desligada e pede ao Claude que te avise e pergunte se você quer ligar. Respondeu sim, o Claude roda um comando do motor que acrescenta `autoUpdate: true` na entrada do marketplace no seu `settings.json` (e guarda uma cópia do arquivo ao lado). Respondeu não, ele não pergunta mais. Sem resposta, ele lembra no máximo uma vez por semana, três vezes no total. Ele nunca liga sozinho.
+
+**No app desktop precisa de mais uma chave.** O app desktop abre toda sessão com a atualização em segundo plano desligada (`DISABLE_AUTOUPDATER=1`), e com isso a de plugins também não roda, mesmo ligada no marketplace. Quando o plugin percebe esse caso, o mesmo "sim" grava também `FORCE_AUTOUPDATE_PLUGINS=1` no bloco `env` do `settings.json`, que é a variável do Claude Code para manter só a atualização de plugins.
+
+**Ou pelo menu**, no terminal:
 
 1. Numa sessão, rode `/plugin` e abra a aba **Marketplaces**.
 2. Selecione `gbertelli-skills` e escolha **Enable auto-update**.
+
+Para conferir a qualquer hora: `operarios.py atualizacao` diz se está ligada e por quê; `operarios.py atualizacao --ligar` liga; `--nao-perguntar` cala o aviso (a variável `ORQ_SEM_AVISO_ATUALIZACAO=1` também).
 
 Daí em diante cada mudança deste repositório chega sozinha. O Claude Code confere em segundo plano nos primeiros minutos de cada sessão, avisa `Plugin updated: orquestrador · Run /reload-plugins to apply` e, mesmo que você ignore o aviso, a versão nova já vale na sessão seguinte.
 
@@ -310,7 +318,7 @@ A configuração `skillOverrides` do Claude Code não vale para skill de plugin,
 ### O motor
 
 ```bash
-python <pasta da skill>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar>
+python <pasta da skill>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>
 python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -342,6 +350,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | `ORQ_FICHA` | arquivo `.md` onde `operarios.py atualizar` grava a ficha | sem ela, `atualizar` só avisa e sai com código 0 |
 | `ORQ_PROJECTS` | pasta dos transcripts do Claude Code | `~/.claude/projects` |
 | `ORQ_PRECOS` | arquivo JSON que sobrescreve preços da tabela do `custo.py` (o mesmo que `--precos`; `--mostrar-precos` imprime a tabela atual para você salvar e editar) | tabela interna, com a data em que foi lida |
+| `ORQ_SEM_AVISO_ATUALIZACAO` | `1` cala o aviso de atualização automática desligada | avisa (no máximo 3 vezes) |
 
 - **Nome dos agentes:** agente de plugin leva o prefixo do plugin, então o `subagent_type` é `orquestrador:orq-leitor`, `orquestrador:orq-executor` e assim por diante. Se a sua versão do Claude Code mostrar os agentes sem prefixo, use o nome simples.
 - **`PROJETOS.md`:** `provar-na-tela` e `bater-valores` leem um `PROJETOS.md` opcional na pasta de cada skill (como subir, entrar e conferir cada projeto seu). Copie o `PROJETOS.exemplo.md` e preencha; sem ele, as skills usam o README do projeto.
@@ -363,7 +372,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 plugins/orquestrador/
   .claude-plugin/plugin.json        o plugin (sem número de versão: cada commit é uma versão)
   agents/                           os 5 papéis orq-*, cada um com sua cor na lista de tarefas
-  hooks/                            retomada depois de compactar ou retomar a sessão
+  hooks/                            retomada depois de compactar; aviso de atualização desligada
   skills/
     orquestrador/
       SKILL.md                      o ciclo do chefe
@@ -410,6 +419,8 @@ O que mudou em cada data está no [CHANGELOG](CHANGELOG.md). Para contribuir, ve
 ## Privacidade
 
 O repositório traz só números agregados do uso: nenhum brief real, nenhum nome de projeto e nenhuma tabela de projetos. A ficha de quem instala começa vazia e aprende com o próprio uso. O registro, a ficha e o `PROJETOS.md` que você preencher ficam só na sua máquina (estão no `.gitignore`).
+
+Os dois hooks do plugin só leem arquivos locais e não usam a rede. O de atualização lê a configuração de plugins do Claude Code para saber se a atualização automática está ligada e guarda a data do último aviso; o seu `settings.json` só é alterado quando você aceita, pelo comando `atualizacao --ligar`.
 
 ## Licença
 

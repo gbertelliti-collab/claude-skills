@@ -2,6 +2,20 @@
 
 O plugin não tem número de versão: cada commit na `main` chega em quem instalou (veja "Receber atualizações" no README). As entradas abaixo são por data.
 
+## 2026-11-17: o plugin avisa quando não está recebendo atualizações
+
+Marketplace de terceiro nasce com a atualização automática desligada, e quem publica não consegue ligar por ninguém. Quem instalava ficava parado na versão do dia da instalação sem saber.
+
+### Novo
+
+- **Aviso na primeira sessão.** Um hook de início de sessão percebe que a atualização automática do marketplace está desligada e pede ao Claude que avise e pergunte se você quer ligar. No máximo uma vez por semana e três vezes no total; nunca liga sozinho; quem desligou de propósito não é avisado.
+- **`operarios.py atualizacao`.** Sem opção, diz se está ligada e por quê. `--ligar` acrescenta `autoUpdate: true` na entrada do marketplace no `settings.json` do usuário, sem mexer no resto, e guarda uma cópia do arquivo. `--nao-perguntar` cala o aviso, assim como `ORQ_SEM_AVISO_ATUALIZACAO=1`.
+- **App desktop.** O app desktop abre toda sessão com `DISABLE_AUTOUPDATER=1`, o que desliga também a atualização de plugins. Nesse caso o `--ligar` grava também `FORCE_AUTOUPDATE_PLUGINS=1` em `env`.
+
+### Corrigido
+
+- **O hook de retomada não rodava em Linux nem em macOS.** O script montava o caminho do motor com um padrão que o `sh` desses sistemas não entende, não achava o motor e saía calado. No Windows funcionava. Os dois scripts de hook agora cortam o caminho de um jeito que vale em qualquer `sh`, e há testes que executam os scripts de verdade nos três sistemas.
+
 ## 2026-11-17: a skill cede para o fluxo que o projeto já tem
 
 Retorno de quem instalou num projeto que não é de código: a skill abria sozinha em trabalho com várias partes e podia passar por cima de um fluxo próprio, em que a redação vai para um agente especialista.

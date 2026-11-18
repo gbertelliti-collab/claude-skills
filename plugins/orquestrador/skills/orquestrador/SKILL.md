@@ -7,7 +7,7 @@ description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de c
 
 A sessao e o chefe: pensa, decide, confere e integra. Operarios Haiku e Sonnet leem e digitam. Toda tarefa delegada vira 1 linha no registro; a ficha que sai do registro diz quem recebe a proxima tarefa daquele tipo e quanto detalhe o brief leva.
 
-Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|conferir|retomar|resumo|atualizar>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
+Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
 
 Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
 

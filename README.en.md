@@ -233,10 +233,18 @@ Inside a session, the equivalent is `/plugin marketplace add gbertelliti-collab/
 
 ## Getting updates
 
-Claude Code only turns on auto-update by itself for official marketplaces. For a third-party marketplace like this one, it comes turned off and the publisher cannot turn it on for you. It is a one-time setting:
+Claude Code only turns on auto-update by itself for official marketplaces. For a third-party marketplace like this one, it comes turned off and the publisher cannot turn it on for you. It is a one-time setting, and the plugin helps you do it:
+
+**The plugin asks.** In the first session after installing, it notices that auto-update is off and asks Claude to tell you and ask whether you want it on. If you say yes, Claude runs an engine command that adds `autoUpdate: true` to the marketplace entry in your `settings.json` (and keeps a copy of the file next to it). If you say no, it does not ask again. With no answer, it reminds you at most once a week, three times in total. It never turns it on by itself.
+
+**The desktop app needs one more key.** The desktop app opens every session with background updates turned off (`DISABLE_AUTOUPDATER=1`), and with that the plugin update pass does not run either, even when it is on for the marketplace. When the plugin detects this case, the same "yes" also writes `FORCE_AUTOUPDATE_PLUGINS=1` to the `env` block of `settings.json`, which is Claude Code's variable for keeping only plugin updates on.
+
+**Or through the menu**, in the terminal:
 
 1. In a session, run `/plugin` and open the **Marketplaces** tab.
 2. Select `gbertelli-skills` and choose **Enable auto-update**.
+
+To check at any time: `operarios.py atualizacao` says whether it is on and why; `operarios.py atualizacao --ligar` turns it on; `--nao-perguntar` silences the notice (so does the variable `ORQ_SEM_AVISO_ATUALIZACAO=1`).
 
 From then on every change in this repository arrives by itself. Claude Code checks in the background in the first minutes of each session, shows `Plugin updated: orquestrador · Run /reload-plugins to apply` and, even if you ignore the notice, the new version already applies in the next session.
 
@@ -310,7 +318,7 @@ Claude Code's `skillOverrides` setting does not apply to plugin skills, so it is
 ### The engine
 
 ```bash
-python <skill folder>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar>
+python <skill folder>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>
 python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -342,6 +350,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 | `ORQ_FICHA` | `.md` file where `operarios.py atualizar` writes the scorecard | without it, `atualizar` only warns and exits with code 0 |
 | `ORQ_PROJECTS` | folder of the Claude Code transcripts | `~/.claude/projects` |
 | `ORQ_PRECOS` | JSON file that overrides prices in the `custo.py` table (same as `--precos`; `--mostrar-precos` prints the current table for you to save and edit) | built-in table, with the date it was read |
+| `ORQ_SEM_AVISO_ATUALIZACAO` | `1` silences the notice that auto-update is off | notifies (at most 3 times) |
 
 - **Agent names:** a plugin agent carries the plugin prefix, so the `subagent_type` is `orquestrador:orq-leitor`, `orquestrador:orq-executor` and so on. If your version of Claude Code shows the agents without a prefix, use the plain name.
 - **`PROJETOS.md`:** `provar-na-tela` and `bater-valores` read an optional `PROJETOS.md` in each skill's folder (how to start, log in and check each of your projects). Copy `PROJETOS.exemplo.md` and fill it in; without it, the skills use the project's README.
@@ -363,7 +372,7 @@ operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam 
 plugins/orquestrador/
   .claude-plugin/plugin.json        the plugin (no version number: each commit is a version)
   agents/                           the 5 orq-* roles, each with its own color in the task list
-  hooks/                            resume after the context compacts or the session restarts
+  hooks/                            resume after the context compacts; notice when auto-update is off
   skills/
     orquestrador/
       SKILL.md                      the lead's cycle
@@ -410,6 +419,8 @@ What changed on each date is in the [CHANGELOG](CHANGELOG.md). To contribute, se
 ## Privacy
 
 The repository carries only aggregated usage numbers: no real brief, no project name and no project table. The scorecard of whoever installs starts empty and learns from their own use. The log, the scorecard and the `PROJETOS.md` you fill in stay only on your machine (they are in `.gitignore`).
+
+The plugin's two hooks only read local files and do not use the network. The update hook reads Claude Code's plugin configuration to know whether auto-update is on and stores the date of the last notice; your `settings.json` is only changed when you accept, through the `atualizacao --ligar` command.
 
 ## License
 

@@ -5,7 +5,8 @@
 Registra como cada operario (haiku/sonnet/opus) se saiu em cada tarefa e devolve
 uma ficha com a rota recomendada aprendida do historico.
 
-Comandos: status, registrar, ficha, conferir, retomar, resumo, atualizar.
+Comandos: status, registrar, ficha, conferir, retomar, resumo, atualizar, atualizacao.
+ORQ_SEM_AVISO_ATUALIZACAO=1 cala o aviso de atualizacao automatica desligada.
 Variaveis de ambiente: ORQ_REGISTRO (registro; padrao ~/.claude/orquestrador/registro.jsonl),
 ORQ_FICHA (arquivo .md onde `atualizar` grava a ficha; sem ela `atualizar` so avisa e sai 0),
 ORQ_PROJECTS (transcripts; padrao ~/.claude/projects).
@@ -17,6 +18,7 @@ import io
 import json
 import os
 import re
+import shutil
 import statistics
 import sys
 import tempfile
@@ -1448,6 +1450,370 @@ def cmd_atualizar(args):
 
 
 # ----------------------------------------------------------------------------
+# Atualizacao automatica do plugin
+# ----------------------------------------------------------------------------
+# O Claude Code so liga a atualizacao automatica sozinho nos marketplaces oficiais; num marketplace
+# de terceiro ela nasce desligada e quem publica nao consegue ligar por ninguem. Este bloco le a
+# configuracao LOCAL (sem rede) pra dizer se quem instalou esta recebendo as versoes novas, avisa
+# uma vez por semana (no maximo 3 vezes) e, so quando o usuario aceita, liga.
+PLUGIN_NOME = "orquestrador"
+AVISO_ATUALIZACAO_DIAS = 7
+AVISO_ATUALIZACAO_MAX = 3
+ENV_TRAVA_UPDATE = ("DISABLE_UPDATES", "DISABLE_AUTOUPDATER", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC")
+
+
+def p_config():
+    """Pasta de configuracao do Claude Code. ORQ_CLAUDE_DIR existe so pra teste."""
+    return (os.environ.get("ORQ_CLAUDE_DIR") or os.environ.get("CLAUDE_CONFIG_DIR")
+            or os.path.join(os.path.expanduser("~"), ".claude"))
+
+
+def p_estado_atualizacao():
+    return os.path.join(os.path.dirname(os.path.abspath(p_registro())), "atualizacao.json")
+
+
+def _agora_iso():
+    return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _env_ligada(nome):
+    return (os.environ.get(nome) or "").strip().lower() not in ("", "0", "false", "no", "off")
+
+
+def _json_ou_none(path):
+    """Le um JSON de configuracao (aceita BOM). Devolve None se nao existe ou nao e objeto valido."""
+    try:
+        with io.open(path, "r", encoding="utf-8-sig") as f:
+            dados = json.load(f)
+    except (OSError, ValueError):
+        return None
+    return dados if isinstance(dados, dict) else None
+
+
+def _mesmo_caminho(a, b):
+    try:
+        return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+    except (OSError, ValueError):
+        return False
+
+
+def _raiz_plugin(args):
+    raiz = getattr(args, "raiz", None)
+    if raiz:
+        return os.path.abspath(raiz)
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def _marketplace_da_instalacao(raiz):
+    """Nome do marketplace de onde ESTA copia do plugin foi instalada, ou None (copia solta,
+    --plugin-dir, pasta de desenvolvimento): ai nao ha o que atualizar e ninguem e avisado."""
+    cfg = p_config()
+    inst = _json_ou_none(os.path.join(cfg, "plugins", "installed_plugins.json")) or {}
+    plugins = inst.get("plugins")
+    if isinstance(plugins, dict):
+        for chave, entradas in plugins.items():
+            if not isinstance(chave, str) or "@" not in chave or not isinstance(entradas, list):
+                continue
+            nome, mkt = chave.split("@", 1)
+            if nome != PLUGIN_NOME or not mkt:
+                continue
+            for e in entradas:
+                if isinstance(e, dict) and isinstance(e.get("installPath"), str) \
+                        and _mesmo_caminho(e["installPath"], raiz):
+                    return mkt
+    # installed_plugins.json pode estar um passo atras (plugin atualizado no meio da sessao):
+    # a pasta <config>/plugins/cache/<marketplace>/<plugin>/<versao> tambem diz de onde veio
+    try:
+        rel = os.path.relpath(os.path.realpath(raiz), os.path.realpath(os.path.join(cfg, "plugins", "cache")))
+    except (OSError, ValueError):
+        return None
+    partes = rel.replace("\\", "/").split("/")
+    if len(partes) == 3 and partes[0] not in ("..", ".", "") and partes[1] == PLUGIN_NOME:
+        return partes[0]
+    return None
+
+
+def _arquivos_settings():
+    """(rotulo, caminho) do que mais manda pro que menos manda."""
+    if os.name == "nt":
+        ger = os.path.join(os.environ.get("ProgramFiles") or "C:\\Program Files", "ClaudeCode",
+                           "managed-settings.json")
+    elif sys.platform == "darwin":
+        ger = "/Library/Application Support/ClaudeCode/managed-settings.json"
+    else:
+        ger = "/etc/claude-code/managed-settings.json"
+    cwd = os.getcwd()
+    return [("gerenciado", ger),
+            ("local do projeto", os.path.join(cwd, ".claude", "settings.local.json")),
+            ("do projeto", os.path.join(cwd, ".claude", "settings.json")),
+            ("do usuario", os.path.join(p_config(), "settings.json"))]
+
+
+def _estado_auto_update(mkt):
+    """(ligada, origem). Ordem da documentacao do Claude Code: `autoUpdate` na entrada do
+    marketplace em `extraKnownMarketplaces` de um arquivo de settings; depois o `autoUpdate` do
+    known_marketplaces.json (o que o botao do /plugin grava); depois o padrao (desligada)."""
+    for rotulo, caminho in _arquivos_settings():
+        dados = _json_ou_none(caminho) or {}
+        ekm = dados.get("extraKnownMarketplaces")
+        entrada = ekm.get(mkt) if isinstance(ekm, dict) else None
+        if isinstance(entrada, dict) and isinstance(entrada.get("autoUpdate"), bool):
+            return entrada["autoUpdate"], "settings " + rotulo
+    conhecidos = _json_ou_none(os.path.join(p_config(), "plugins", "known_marketplaces.json")) or {}
+    entrada = conhecidos.get(mkt)
+    if isinstance(entrada, dict) and isinstance(entrada.get("autoUpdate"), bool):
+        return entrada["autoUpdate"], "botao do /plugin"
+    return False, "padrao"
+
+
+def _settings_env(nome):
+    """Valor de uma variavel no bloco `env` do settings que mais manda, ou None se nenhum declara."""
+    for _rotulo, caminho in _arquivos_settings():
+        env = (_json_ou_none(caminho) or {}).get("env")
+        if isinstance(env, dict) and nome in env:
+            return str(env[nome])
+    return None
+
+
+def _var_ligada(nome):
+    """Ligada no ambiente do processo ou no `env` de um settings (vale a partir da proxima sessao)."""
+    if _env_ligada(nome):
+        return True
+    v = _settings_env(nome)
+    return v is not None and v.strip().lower() not in ("", "0", "false", "no", "off")
+
+
+def _trava_update():
+    """(variavel, quem) que desliga a passada de atualizacao automatica, ou (None, None).
+    quem = "sessao" quando e so DISABLE_AUTOUPDATER vindo do ambiente da sessao, sem estar escrito em
+    nenhum settings: e o que o app desktop faz em toda sessao (ele atualiza o proprio Claude Code), e
+    ai vale oferecer FORCE_AUTOUPDATE_PLUGINS. Nao da pra distinguir do usuario que pos a variavel no
+    perfil do shell, e o erro barato e perguntar a ele uma vez, nao deixar o app sem aviso nenhum.
+    quem = "usuario" nas travas mais fortes ou declaradas em settings: escolha de alguem, respeitada."""
+    if _var_ligada("FORCE_AUTOUPDATE_PLUGINS"):
+        return None, None
+    for nome in ENV_TRAVA_UPDATE:
+        if not _var_ligada(nome):
+            continue
+        da_sessao = nome == "DISABLE_AUTOUPDATER" and _settings_env(nome) is None
+        return nome, ("sessao" if da_sessao else "usuario")
+    return None, None
+
+
+def _ler_estado_atualizacao():
+    return _json_ou_none(p_estado_atualizacao()) or {}
+
+
+def _gravar_estado_atualizacao(estado):
+    _gravar_atomico(p_estado_atualizacao(), json.dumps(estado, ensure_ascii=False, indent=1) + "\n")
+
+
+def _cmd_python():
+    """Comando pra colar: sem aspas no interpretador quando o caminho nao tem espaco, porque assim a
+    mesma linha roda em sh e em PowerShell (la, linha que comeca com aspas e texto, nao comando)."""
+    exe = (sys.executable or "python").replace("\\", "/")
+    motor = os.path.abspath(__file__).replace("\\", "/")
+    if re.search(r"\s", exe):
+        exe = '"%s"' % exe
+    return '%s "%s"' % (exe, motor)
+
+
+def _gravar_settings(caminho, texto):
+    """Grava o settings.json no arquivo de verdade (segue link simbolico em vez de troca-lo por um
+    arquivo comum) e mantem a permissao que ele tinha."""
+    alvo = os.path.realpath(caminho)
+    pasta = os.path.dirname(alvo)
+    os.makedirs(pasta, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".settings-", suffix=".tmp", dir=pasta)
+    try:
+        with io.open(fd, "w", encoding="utf-8", newline="") as f:
+            f.write(texto)
+        if os.path.exists(alvo):
+            try:
+                shutil.copymode(alvo, tmp)
+            except OSError:
+                pass
+        os.replace(tmp, alvo)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _ligar_auto_update(mkt, forcar):
+    """Poe `autoUpdate: true` na entrada do marketplace em settings.json do usuario e, com `forcar`,
+    `FORCE_AUTOUPDATE_PLUGINS=1` no bloco `env` (no app desktop a passada de atualizacao so roda
+    assim). Nao mexe no resto do arquivo. Devolve (rc, mensagem). Arquivo ilegivel = nao toca."""
+    caminho = os.path.join(p_config(), "settings.json")
+    texto = None
+    if os.path.exists(caminho):
+        try:
+            with io.open(caminho, "r", encoding="utf-8-sig", newline="") as f:
+                texto = f.read()
+            dados = json.loads(texto) if texto.strip() else {}
+        except (OSError, ValueError) as e:
+            return 13, "nao consegui ler %s (%s). Nada foi alterado." % (caminho, e)
+        if not isinstance(dados, dict):
+            return 13, "%s nao e um objeto JSON. Nada foi alterado." % caminho
+    else:
+        dados = {}
+    ekm = dados.get("extraKnownMarketplaces")
+    if ekm is not None and not isinstance(ekm, dict):
+        return 13, "`extraKnownMarketplaces` em %s nao e um objeto. Nada foi alterado." % caminho
+    entrada = (ekm or {}).get(mkt)
+    if entrada is not None and not isinstance(entrada, dict):
+        return 13, "a entrada de `%s` em %s nao e um objeto. Nada foi alterado." % (mkt, caminho)
+    env = dados.get("env")
+    if forcar and env is not None and not isinstance(env, dict):
+        return 13, "`env` em %s nao e um objeto. Nada foi alterado." % caminho
+    if entrada is None:
+        conhecidos = _json_ou_none(os.path.join(p_config(), "plugins", "known_marketplaces.json")) or {}
+        fonte = conhecidos.get(mkt).get("source") if isinstance(conhecidos.get(mkt), dict) else None
+        if not isinstance(fonte, dict):
+            return 13, ("o marketplace `%s` nao esta cadastrado nesta maquina. Ligue pelo /plugin, "
+                        "aba Marketplaces." % mkt)
+        entrada = {"source": fonte}
+    feito = []
+    if entrada.get("autoUpdate") is not True:
+        if ekm is None:
+            ekm = dados["extraKnownMarketplaces"] = {}
+        ekm[mkt] = entrada
+        entrada["autoUpdate"] = True
+        feito.append("`autoUpdate: true` no marketplace `%s`" % mkt)
+    if forcar and str((env or {}).get("FORCE_AUTOUPDATE_PLUGINS", "")).strip() != "1":
+        if env is None:
+            env = dados["env"] = {}
+        env["FORCE_AUTOUPDATE_PLUGINS"] = "1"
+        feito.append("`FORCE_AUTOUPDATE_PLUGINS=1` em `env` (a sessao roda com DISABLE_AUTOUPDATER=1, como no app "
+                     "desktop, e sem isso a atualizacao de plugins nao roda)")
+    if not feito:
+        return 0, "a atualizacao automatica de `%s` ja estava ligada em %s." % (mkt, caminho)
+    recuo, fim = 2, "\n"
+    if texto is not None:
+        m = re.search(r'^\s*\{\s*\r?\n([ \t]+)"', texto)
+        if m:
+            recuo = m.group(1) if "\t" in m.group(1) else len(m.group(1))
+        fim = "\r\n" if "\r\n" in texto else "\n"
+    copia = caminho + ".antes-do-orquestrador"
+    try:
+        # allow_nan=False: um 1e400 no arquivo viraria `Infinity`, que nao e JSON
+        novo = json.dumps(dados, ensure_ascii=False, indent=recuo, allow_nan=False).replace("\n", fim) + fim
+        novo.encode("utf-8")
+        if texto is not None:
+            _gravar_atomico(copia, texto)
+        _gravar_settings(caminho, novo)
+    except (OSError, ValueError) as e:
+        return 13, "nao consegui gravar %s (%s). Nada foi alterado." % (caminho, e)
+    msg = "atualizacao automatica ligada em %s: %s." % (caminho, "; ".join(feito))
+    if texto is not None:
+        msg += " Copia de antes: %s." % copia
+    return 0, msg
+
+
+def cmd_atualizacao(args):
+    if args.hook:
+        try:
+            return _atualizacao(args)
+        except Exception:
+            return 0
+    return _atualizacao(args)
+
+
+def _atualizacao(args):
+    hook = args.hook
+    if args.nao_perguntar:
+        estado = _ler_estado_atualizacao()
+        estado["recusou"] = True
+        estado["quando_recusou"] = _agora_iso()
+        _gravar_estado_atualizacao(estado)
+        print("anotado: o plugin nao volta a perguntar sobre atualizacao automatica.")
+        return 0
+    mkt = _marketplace_da_instalacao(_raiz_plugin(args))
+    if not mkt:
+        if not hook:
+            print("esta copia do plugin nao veio de um marketplace (pasta solta ou --plugin-dir): "
+                  "nao ha atualizacao automatica pra ligar.")
+        return 0 if hook else 10
+    ligada, origem = _estado_auto_update(mkt)
+    trava, quem = _trava_update()
+    if args.ligar:
+        rc, msg = _ligar_auto_update(mkt, forcar=(quem == "sessao"))
+        if rc != 0:
+            sys.stderr.write("erro: " + msg + "\n")
+            return rc
+        print(msg)
+        estado = _ler_estado_atualizacao()
+        estado["ligou"] = _agora_iso()
+        _gravar_estado_atualizacao(estado)
+        ligada, origem = _estado_auto_update(mkt)
+        trava, quem = _trava_update()
+        if not ligada:
+            print("atencao: o settings %s desliga a atualizacao deste marketplace e manda mais que o "
+                  "do usuario; ela continua desligada." % origem.replace("settings ", ""))
+        if trava:
+            print("atencao: a variavel %s desliga toda atualizacao automatica nesta maquina; se foi "
+                  "voce que definiu e quer so a dos plugins, defina tambem FORCE_AUTOUPDATE_PLUGINS=1."
+                  % trava)
+        if ligada and not trava:
+            print("vale a partir da proxima sessao; a versao nova chega nos primeiros minutos dela.")
+        return 0
+    if hook:
+        if _env_ligada("ORQ_SEM_AVISO_ATUALIZACAO"):
+            return 0
+        if not ligada and origem != "padrao":
+            return 0  # alguem desligou de proposito: nao e o plugin que vai insistir
+        if trava and quem != "sessao":
+            return 0  # idem: quem desligou as atualizacoes da maquina foi o usuario ou a empresa
+        if ligada and not trava:
+            return 0  # esta tudo certo
+        estado = _ler_estado_atualizacao()
+        if estado.get("recusou") or _int0(estado.get("avisos")) >= AVISO_ATUALIZACAO_MAX:
+            return 0
+        ultimo = _parse_ts(estado.get("ultimo_aviso")) if estado.get("ultimo_aviso") else None
+        if ultimo is not None and datetime.now().astimezone() - ultimo < timedelta(days=AVISO_ATUALIZACAO_DIAS):
+            return 0
+        estado["ultimo_aviso"] = _agora_iso()
+        estado["avisos"] = _int0(estado.get("avisos")) + 1
+        _gravar_estado_atualizacao(estado)
+        cmd = _cmd_python()
+        if ligada:
+            motivo = ("O marketplace `%s` esta com a atualizacao automatica ligada, mas esta sessao roda "
+                      "com DISABLE_AUTOUPDATER=1 (o app desktop faz isso em toda sessao), o que desliga "
+                      "tambem a atualizacao de plugins" % mkt)
+        elif trava:
+            motivo = ("O marketplace `%s` esta com a atualizacao automatica desligada (padrao do Claude "
+                      "Code pra marketplace de terceiro) e esta sessao roda com DISABLE_AUTOUPDATER=1 (o app "
+                      "desktop faz isso em toda sessao), o que desliga tambem a atualizacao de plugins" % mkt)
+        else:
+            motivo = ("O marketplace `%s` esta com a atualizacao automatica desligada (padrao do Claude "
+                      "Code pra marketplace de terceiro)" % mkt)
+        muda = "`autoUpdate: true` na entrada do marketplace"
+        if trava:
+            muda += " e `FORCE_AUTOUPDATE_PLUGINS=1` no bloco `env`"
+        print("orquestrador: este plugin nao esta recebendo atualizacoes sozinho. %s; correcoes novas nao "
+              "chegam. Na primeira resposta, diga isso ao usuario em 1 linha e pergunte se ele quer "
+              "ligar. Se sim, rode: %s atualizacao --ligar (poe %s no settings.json do usuario e guarda "
+              "copia do arquivo). Se nao, rode: %s atualizacao --nao-perguntar. Nao ligue sem a resposta "
+              "dele." % (motivo, cmd, muda, cmd))
+        return 0
+    dados = {"marketplace": mkt, "ligada": ligada, "origem": origem, "travada_por": trava,
+             "trava_de": quem}
+    if args.json:
+        print(json.dumps(dados, ensure_ascii=False))
+    else:
+        print("marketplace: %s" % mkt)
+        print("atualizacao automatica: %s (%s)" % ("LIGADA" if ligada else "DESLIGADA", origem))
+        if trava:
+            print("mas nao roda: a variavel %s desliga a atualizacao em segundo plano (%s)"
+                  % (trava, "vem do ambiente da sessao, como no app desktop" if quem == "sessao" else "escolha desta maquina"))
+        if not ligada or quem == "sessao":
+            print("ligar: %s atualizacao --ligar" % _cmd_python())
+    return 0 if ligada and not trava else 3
+
+
+# ----------------------------------------------------------------------------
 # CLI
 # ----------------------------------------------------------------------------
 class Parser(argparse.ArgumentParser):
@@ -1518,6 +1884,18 @@ def montar_parser():
 
     a = sub.add_parser("atualizar", help="grava a nota da ficha")
     a.set_defaults(fn=cmd_atualizar)
+
+    z = sub.add_parser("atualizacao", help="diz se o plugin recebe versoes novas sozinho; --ligar liga",
+                       description="Sem opcao: mostra o estado (sai 0 ligada, 3 desligada, 10 copia "
+                                   "que nao veio de marketplace). So le arquivos locais, sem rede.")
+    zx = z.add_mutually_exclusive_group()
+    zx.add_argument("--ligar", action="store_true",
+                   help="poe autoUpdate: true na entrada do marketplace no settings.json do usuario")
+    zx.add_argument("--nao-perguntar", action="store_true", help="o aviso de inicio de sessao nao volta")
+    z.add_argument("--json", action="store_true")
+    zx.add_argument("--hook", action="store_true", help="modo silencioso para hook de sessao")
+    z.add_argument("--raiz", help=argparse.SUPPRESS)
+    z.set_defaults(fn=cmd_atualizacao)
     return ap
 
 

@@ -206,6 +206,21 @@ class TestEstrutura(unittest.TestCase):
         self.assertTrue(data.startswith(b"#!/bin/sh"), "shebang ausente")
         self.assertNotIn(b"\r", data, "retomar.sh com CR (deve ser LF)")
 
+    def test_13b_hooks_de_inicio(self):
+        # um script por evento de inicio: retomada (compactou/retomou) e aviso de atualizacao (sessao nova)
+        entradas = carregar_hooks()["hooks"]["SessionStart"]
+        mapa = {e.get("matcher"): e["hooks"][0]["command"] for e in entradas}
+        self.assertEqual(set(mapa), {"compact|resume", "startup"})
+        self.assertIn("hooks/retomar.sh", mapa["compact|resume"])
+        self.assertIn("hooks/atualizacao.sh", mapa["startup"])
+        for e in entradas:
+            self.assertLessEqual(e["hooks"][0].get("timeout", 60), 30, "hook de inicio nao pode segurar a sessao")
+        data = ler_bytes(os.path.join(PLUGIN, "hooks", "atualizacao.sh"))
+        self.assertTrue(data.startswith(b"#!/bin/sh"), "shebang ausente")
+        self.assertNotIn(b"\r", data, "atualizacao.sh com CR (deve ser LF)")
+        self.assertIn(b"atualizacao --hook", data)
+        self.assertNotIn(b"--ligar", data, "o hook nunca liga sozinho")
+
     def test_14_ascii_e_caminhos_de_skill(self):
         regex = r'\$\{CLAUDE_SKILL_DIR\}/([A-Za-z0-9_./-]+)'
         arquivos = [(nome, c) for nome, c in arquivos_skill().items()]

@@ -1164,5 +1164,406 @@ class TestRetomar(Base):
         self.assertIn(b"ja despachou 3 operarios", p.stdout)
 
 
+class TestAtualizacao(Base):
+    """Aviso e ligacao da atualizacao automatica. Tudo numa pasta de configuracao falsa
+    (ORQ_CLAUDE_DIR), no mesmo formato que o Claude Code grava ao instalar por marketplace."""
+    MKT = "loja-teste"
+
+    def setUp(self):
+        super(TestAtualizacao, self).setUp()
+        self.cfg = os.path.join(self.tmp, "cfg")
+        self.raiz = os.path.join(self.cfg, "plugins", "cache", self.MKT, "orquestrador", "abc123")
+        os.makedirs(self.raiz)
+        self.cwd = os.path.join(self.tmp, "projeto")
+        os.makedirs(self.cwd)
+        self.settings = os.path.join(self.cfg, "settings.json")
+        self.estado = os.path.join(os.path.dirname(self.registro), "atualizacao.json")
+        for v in ("DISABLE_UPDATES", "DISABLE_AUTOUPDATER", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+                  "FORCE_AUTOUPDATE_PLUGINS", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CONFIG_DIR",
+                  "ORQ_SEM_AVISO_ATUALIZACAO"):
+            self.env.pop(v, None)
+        self.env["ORQ_CLAUDE_DIR"] = self.cfg
+        self.fonte = {"source": "github", "repo": "alguem/loja-teste"}
+        self.json(os.path.join(self.cfg, "plugins", "known_marketplaces.json"),
+                  {self.MKT: {"source": self.fonte, "installLocation": "x", "lastUpdated": "2026-01-01T00:00:00Z"}})
+        self.json(os.path.join(self.cfg, "plugins", "installed_plugins.json"),
+                  {"version": 2, "plugins": {"orquestrador@" + self.MKT: [
+                      {"scope": "user", "installPath": self.raiz, "version": "abc123"}]}})
+        self.json(self.settings, {"language": "português", "extraKnownMarketplaces": {
+            self.MKT: {"source": self.fonte}}, "enabledPlugins": {"orquestrador@" + self.MKT: True}})
+
+    def json(self, caminho, dados, recuo=2):
+        os.makedirs(os.path.dirname(caminho), exist_ok=True)
+        with io.open(caminho, "w", encoding="utf-8", newline="") as f:
+            f.write(json.dumps(dados, ensure_ascii=False, indent=recuo) + "\n")
+
+    def at(self, *args, **env):
+        e = dict(self.env)
+        e.update(env)
+        return subprocess.run([sys.executable, SCRIPT, "atualizacao", "--raiz", self.raiz] + list(args),
+                              env=e, cwd=self.cwd, capture_output=True, text=True, encoding="utf-8")
+
+    def lido(self, caminho=None):
+        with io.open(caminho or self.settings, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_01_copia_solta_nao_tem_o_que_ligar(self):
+        solta = os.path.join(self.tmp, "solta")
+        os.makedirs(solta)
+        p = subprocess.run([sys.executable, SCRIPT, "atualizacao", "--raiz", solta], env=self.env,
+                           cwd=self.cwd, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(p.returncode, 10, p.stderr)
+        self.assertIn("nao veio de um marketplace", p.stdout)
+        h = subprocess.run([sys.executable, SCRIPT, "atualizacao", "--hook", "--raiz", solta], env=self.env,
+                           cwd=self.cwd, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual((h.returncode, h.stdout, h.stderr), (0, "", ""))
+        self.assertFalse(os.path.exists(self.estado))
+
+    def test_02_padrao_desligada(self):
+        p = self.at()
+        self.assertEqual(p.returncode, 3, p.stderr)
+        self.assertIn("marketplace: " + self.MKT, p.stdout)
+        self.assertIn("DESLIGADA (padrao)", p.stdout)
+        d = json.loads(self.at("--json").stdout)
+        self.assertEqual((d["marketplace"], d["ligada"], d["origem"], d["travada_por"]),
+                         (self.MKT, False, "padrao", None))
+
+    def test_03_hook_avisa_uma_vez_e_cala(self):
+        p = self.at("--hook")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout.count("\n"), 1)
+        self.assertTrue(p.stdout.startswith("orquestrador: este plugin nao esta recebendo atualizacoes sozinho."))
+        self.assertIn("`%s`" % self.MKT, p.stdout)
+        self.assertIn("atualizacao --ligar", p.stdout)
+        self.assertIn("atualizacao --nao-perguntar", p.stdout)
+        self.assertIn("Nao ligue sem a resposta dele.", p.stdout)
+        self.assertNotIn("FORCE_AUTOUPDATE_PLUGINS", p.stdout)
+        p.stdout.encode("ascii")
+        self.assertEqual(self.lido(self.estado)["avisos"], 1)
+        self.assertEqual(self.at("--hook").stdout, "")
+        self.assertEqual(self.lido(self.settings).get("env"), None, "hook nao pode mexer no settings")
+        self.assertNotIn("autoUpdate", self.lido()["extraKnownMarketplaces"][self.MKT])
+
+    def test_04_hook_volta_depois_de_7_dias_e_para_no_terceiro(self):
+        velho = (datetime.now().astimezone() - timedelta(days=8)).isoformat(timespec="seconds")
+        for n in (1, 2, 3):
+            self.assertNotEqual(self.at("--hook").stdout, "", "aviso %d" % n)
+            e = self.lido(self.estado)
+            self.assertEqual(e["avisos"], n)
+            e["ultimo_aviso"] = velho
+            self.json(self.estado, e)
+        self.assertEqual(self.at("--hook").stdout, "")
+        recente = self.lido(self.estado)
+        recente["avisos"], recente["ultimo_aviso"] = 1, (datetime.now().astimezone() - timedelta(days=6)).isoformat(timespec="seconds")
+        self.json(self.estado, recente)
+        self.assertEqual(self.at("--hook").stdout, "", "6 dias ainda e cedo")
+
+    def test_05_nao_perguntar_cala_pra_sempre(self):
+        p = self.at("--nao-perguntar")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.at("--hook").stdout, "")
+        self.assertTrue(self.lido(self.estado)["recusou"])
+
+    def test_06_ligar_so_acrescenta_a_chave(self):
+        antes = self.le(self.settings)
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("atualizacao automatica ligada", p.stdout)
+        d = self.lido()
+        self.assertIs(d["extraKnownMarketplaces"][self.MKT]["autoUpdate"], True)
+        self.assertEqual(d["extraKnownMarketplaces"][self.MKT]["source"], self.fonte)
+        self.assertEqual(d["language"], "português")
+        self.assertEqual(d["enabledPlugins"], {"orquestrador@" + self.MKT: True})
+        self.assertEqual(list(d), ["language", "extraKnownMarketplaces", "enabledPlugins"])
+        self.assertNotIn("env", d, "fora do app desktop nao forca nada")
+        depois = self.le(self.settings)
+        self.assertEqual(depois, antes.replace('"repo": "alguem/loja-teste"\n      }\n',
+                                               '"repo": "alguem/loja-teste"\n      },\n      "autoUpdate": true\n'))
+        copia = self.le(self.settings + ".antes-do-orquestrador")
+        self.assertEqual(copia, antes)
+        s = self.at()
+        self.assertEqual(s.returncode, 0, s.stdout)
+        self.assertIn("LIGADA (settings do usuario)", s.stdout)
+        self.assertEqual(self.at("--hook").stdout, "")
+
+    def test_07_ligar_duas_vezes_nao_regrava(self):
+        self.at("--ligar")
+        m = os.path.getmtime(self.settings)
+        os.utime(self.settings, (m - 100, m - 100))
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 0)
+        self.assertIn("ja estava ligada", p.stdout)
+        self.assertEqual(os.path.getmtime(self.settings), m - 100)
+
+    def test_08_ligar_sem_settings_cria_com_a_fonte(self):
+        os.remove(self.settings)
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.lido(), {"extraKnownMarketplaces": {self.MKT: {"source": self.fonte, "autoUpdate": True}}})
+        self.assertFalse(os.path.exists(self.settings + ".antes-do-orquestrador"))
+
+    def test_09_settings_quebrado_nao_e_tocado(self):
+        for lixo in ('{"a": 1,,}', '[1, 2]', '{"extraKnownMarketplaces": []}',
+                     '{"extraKnownMarketplaces": {"loja-teste": "x"}}'):
+            with self.subTest(lixo=lixo):
+                with io.open(self.settings, "w", encoding="utf-8", newline="") as f:
+                    f.write(lixo)
+                p = self.at("--ligar")
+                self.assertEqual(p.returncode, 13, p.stdout)
+                self.assertIn("Nada foi alterado", p.stderr)
+                self.assertEqual(self.le(self.settings), lixo)
+                self.assertFalse(os.path.exists(self.settings + ".antes-do-orquestrador"))
+
+    def test_10_desligada_de_proposito_o_hook_respeita(self):
+        d = self.lido()
+        d["extraKnownMarketplaces"][self.MKT]["autoUpdate"] = False
+        self.json(self.settings, d)
+        self.assertEqual(self.at("--hook").stdout, "")
+        self.assertIn("DESLIGADA (settings do usuario)", self.at().stdout)
+        self.assertEqual(self.at("--ligar").returncode, 0)  # o usuario pediu agora: liga
+        self.assertIs(self.lido()["extraKnownMarketplaces"][self.MKT]["autoUpdate"], True)
+
+    def test_11_botao_do_plugin_conta(self):
+        k = os.path.join(self.cfg, "plugins", "known_marketplaces.json")
+        d = self.lido(k)
+        d[self.MKT]["autoUpdate"] = True
+        self.json(k, d)
+        s = self.at()
+        self.assertEqual(s.returncode, 0, s.stdout)
+        self.assertIn("LIGADA (botao do /plugin)", s.stdout)
+        self.assertEqual(self.at("--hook").stdout, "")
+
+    def test_12_settings_do_projeto_manda_mais(self):
+        self.at("--ligar")
+        self.json(os.path.join(self.cwd, ".claude", "settings.json"),
+                  {"extraKnownMarketplaces": {self.MKT: {"source": self.fonte, "autoUpdate": False}}})
+        s = self.at()
+        self.assertEqual(s.returncode, 3)
+        self.assertIn("DESLIGADA (settings do projeto)", s.stdout)
+        p = self.at("--ligar")
+        self.assertIn("continua desligada", p.stdout)
+        self.assertEqual(self.at("--hook").stdout, "")
+
+    def test_13_sessao_com_autoupdater_desligado_precisa_do_force(self):
+        app = {"DISABLE_AUTOUPDATER": "1"}
+        s = self.at(**app)
+        self.assertEqual(s.returncode, 3)
+        self.assertIn("vem do ambiente da sessao", s.stdout)
+        h = self.at("--hook", **app)
+        self.assertIn("esta sessao roda com DISABLE_AUTOUPDATER=1", h.stdout)
+        self.assertIn("`FORCE_AUTOUPDATE_PLUGINS=1` no bloco `env`", h.stdout)
+        p = self.at("--ligar", **app)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        d = self.lido()
+        self.assertIs(d["extraKnownMarketplaces"][self.MKT]["autoUpdate"], True)
+        self.assertEqual(d["env"], {"FORCE_AUTOUPDATE_PLUGINS": "1"})
+        self.assertIn("vale a partir da proxima sessao", p.stdout)
+        # o processo ainda nao tem a variavel (so a proxima sessao tera), mas o settings ja diz
+        s = self.at(**app)
+        self.assertEqual(s.returncode, 0, s.stdout)
+        self.assertEqual(self.at("--hook", **app).stdout, "")
+
+    def test_14_autoupdater_desligado_com_marketplace_ja_ligado(self):
+        d = self.lido()
+        d["extraKnownMarketplaces"][self.MKT]["autoUpdate"] = True
+        d["env"] = {"OUTRA": "x"}
+        self.json(self.settings, d)
+        app = {"DISABLE_AUTOUPDATER": "1"}
+        h = self.at("--hook", **app)
+        self.assertIn("ligada, mas esta sessao roda", h.stdout)
+        self.assertEqual(self.at("--ligar", **app).returncode, 0)
+        self.assertEqual(self.lido()["env"], {"OUTRA": "x", "FORCE_AUTOUPDATE_PLUGINS": "1"})
+
+    def test_15_trava_escolhida_pelo_usuario_e_respeitada(self):
+        casos = [{"DISABLE_UPDATES": "1"},
+                 {"DISABLE_UPDATES": "1", "DISABLE_AUTOUPDATER": "1"},  # a mais forte manda
+                 {"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"}]
+        for env in casos:
+            with self.subTest(env=sorted(env)):
+                self.assertEqual(self.at("--hook", **env).stdout, "")
+                self.assertFalse(os.path.exists(self.estado))
+        p = self.at("--ligar", DISABLE_UPDATES="1")
+        self.assertEqual(p.returncode, 0)
+        self.assertNotIn("env", self.lido(), "nao forca por cima da escolha do usuario")
+        self.assertIn("desliga toda atualizacao automatica", p.stdout)
+        self.assertEqual(self.at(DISABLE_UPDATES="1").returncode, 3)
+
+    def test_16_trava_declarada_no_settings_e_escolha_do_usuario(self):
+        d = self.lido()
+        d["env"] = {"DISABLE_AUTOUPDATER": "1"}
+        self.json(self.settings, d)
+        app = {"DISABLE_AUTOUPDATER": "1"}
+        self.assertEqual(self.at("--hook", **app).stdout, "")
+        self.at("--ligar", **app)
+        self.assertEqual(self.lido()["env"], {"DISABLE_AUTOUPDATER": "1"})
+
+    def test_17_force_ja_definido_libera(self):
+        env = {"DISABLE_AUTOUPDATER": "1", "FORCE_AUTOUPDATE_PLUGINS": "1"}
+        h = self.at("--hook", **env)
+        self.assertIn("orquestrador: este plugin nao esta recebendo", h.stdout)
+        self.assertNotIn("FORCE_AUTOUPDATE_PLUGINS", h.stdout)
+
+    def test_18_variavel_cala_o_aviso(self):
+        self.assertEqual(self.at("--hook", ORQ_SEM_AVISO_ATUALIZACAO="1").stdout, "")
+        self.assertFalse(os.path.exists(self.estado))
+
+    def test_19_installed_plugins_atrasado_usa_a_pasta(self):
+        self.json(os.path.join(self.cfg, "plugins", "installed_plugins.json"),
+                  {"version": 2, "plugins": {"orquestrador@" + self.MKT: [
+                      {"scope": "user", "installPath": self.raiz + "-velha", "version": "velha"}]}})
+        self.assertIn("marketplace: " + self.MKT, self.at().stdout)
+
+    def test_20_arquivos_ilegiveis_nao_derrubam_o_hook(self):
+        for nome in ("installed_plugins.json", "known_marketplaces.json"):
+            with io.open(os.path.join(self.cfg, "plugins", nome), "w", encoding="utf-8") as f:
+                f.write("{quebrado")
+        with io.open(self.settings, "w", encoding="utf-8") as f:
+            f.write("{quebrado")
+        h = self.at("--hook")
+        self.assertEqual((h.returncode, h.stderr), (0, ""))
+
+    def test_21_bom_recuo_e_crlf_preservados(self):
+        texto = "﻿" + json.dumps(self.lido(), ensure_ascii=False, indent=4).replace("\n", "\r\n") + "\r\n"
+        with io.open(self.settings, "w", encoding="utf-8", newline="") as f:
+            f.write(texto)
+        self.assertIn("DESLIGADA (padrao)", self.at().stdout)
+        self.assertEqual(self.at("--ligar").returncode, 0)
+        novo = self.le(self.settings)
+        self.assertIn('\r\n    "extraKnownMarketplaces"', novo)
+        self.assertNotIn("﻿", novo)
+        self.assertEqual(novo.count("\n"), novo.count("\r\n"))
+        self.assertTrue(json.loads(novo)["extraKnownMarketplaces"][self.MKT]["autoUpdate"])
+
+    def test_22_marketplace_desconhecido_nao_inventa_fonte(self):
+        d = self.lido()
+        del d["extraKnownMarketplaces"]
+        self.json(self.settings, d)
+        os.remove(os.path.join(self.cfg, "plugins", "known_marketplaces.json"))
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("nao esta cadastrado", p.stderr)
+        self.assertNotIn("extraKnownMarketplaces", self.lido())
+
+    def test_23_opcoes_que_nao_combinam(self):
+        p = self.at("--ligar", "--nao-perguntar")
+        self.assertEqual(p.returncode, 13)
+        self.assertFalse(os.path.exists(self.estado))
+        self.assertNotIn("autoUpdate", self.lido()["extraKnownMarketplaces"][self.MKT])
+
+    def test_24_env_que_nao_e_objeto_nao_e_tocado(self):
+        d = self.lido()
+        d["env"] = ["torto"]
+        self.json(self.settings, d)
+        antes = self.le(self.settings)
+        p = self.at("--ligar", DISABLE_AUTOUPDATER="1")
+        self.assertEqual(p.returncode, 13, p.stdout)
+        self.assertEqual(self.le(self.settings), antes)
+        # sem a trava ninguem mexe em `env`: ai liga normalmente
+        self.assertEqual(self.at("--ligar").returncode, 0)
+        self.assertEqual(self.lido()["env"], ["torto"])
+
+    def test_25_numero_que_nao_cabe_em_json_nao_corrompe(self):
+        texto = '{\n  "x": 1e400,\n  "extraKnownMarketplaces": {"%s": {"source": {"source": "github", "repo": "a/b"}}}\n}\n' % self.MKT
+        with io.open(self.settings, "w", encoding="utf-8", newline="") as f:
+            f.write(texto)
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 13, p.stdout)
+        self.assertIn("Nada foi alterado", p.stderr)
+        self.assertNotIn("Traceback", p.stderr)
+        self.assertEqual(self.le(self.settings), texto)
+        self.assertFalse(os.path.exists(self.settings + ".antes-do-orquestrador"))
+
+    def test_26_link_simbolico_continua_link(self):
+        real = os.path.join(self.tmp, "dotfiles", "settings.json")
+        os.makedirs(os.path.dirname(real))
+        shutil.move(self.settings, real)
+        try:
+            os.symlink(real, self.settings)
+        except (OSError, NotImplementedError, AttributeError):
+            self.skipTest("sem permissao pra criar link simbolico nesta maquina")
+        p = self.at("--ligar")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertTrue(os.path.islink(self.settings), "o link virou arquivo comum")
+        self.assertIs(self.lido(real)["extraKnownMarketplaces"][self.MKT]["autoUpdate"], True)
+
+    def test_27_permissao_do_arquivo_e_mantida(self):
+        if os.name == "nt":
+            self.skipTest("bits de permissao POSIX")
+        os.chmod(self.settings, 0o640)
+        self.assertEqual(self.at("--ligar").returncode, 0)
+        self.assertEqual(os.stat(self.settings).st_mode & 0o777, 0o640)
+
+    def test_28_comando_do_aviso_roda_como_esta(self):
+        h = self.at("--hook")
+        m = re.search(r"Se sim, rode: (.+?) atualizacao --ligar \(", h.stdout)
+        self.assertTrue(m, h.stdout)
+        cmd = m.group(1)
+        if " " not in sys.executable:
+            self.assertFalse(cmd.startswith('"'), "linha que comeca com aspas nao roda no PowerShell")
+        # o comando do aviso aponta pro motor de verdade; aqui so se confere que ele existe e responde
+        motor = re.search(r'"([^"]+operarios\.py)"', cmd).group(1)
+        self.assertTrue(os.path.isfile(motor), motor)
+
+
+class TestHooksSh(Base):
+    """Roda os scripts de hook de verdade, do jeito que o Claude Code chama: sh "<raiz>/hooks/x.sh".
+    Sem isto um erro no proprio script passa por todos os testes do motor (ja aconteceu: o corte do
+    caminho nao funcionava fora do Windows e o hook ficava calado)."""
+    MKT = "loja-teste"
+
+    def setUp(self):
+        super(TestHooksSh, self).setUp()
+        self.sh = shutil.which("sh")
+        if not self.sh:
+            self.skipTest("sem sh nesta maquina")
+        self.cfg = os.path.join(self.tmp, "cfg")
+        self.raiz = os.path.join(self.cfg, "plugins", "cache", self.MKT, "orquestrador", "abc123")
+        plugin = os.path.dirname(os.path.dirname(os.path.dirname(AQUI)))
+        os.makedirs(os.path.join(self.raiz, "skills", "orquestrador"))
+        shutil.copytree(os.path.join(plugin, "hooks"), os.path.join(self.raiz, "hooks"))
+        shutil.copy2(SCRIPT, os.path.join(self.raiz, "skills", "orquestrador", "operarios.py"))
+        for v in ("DISABLE_UPDATES", "DISABLE_AUTOUPDATER", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+                  "FORCE_AUTOUPDATE_PLUGINS", "CLAUDE_CONFIG_DIR", "ORQ_SEM_AVISO_ATUALIZACAO"):
+            self.env.pop(v, None)
+        self.env["ORQ_CLAUDE_DIR"] = self.cfg
+        os.makedirs(os.path.join(self.cfg, "plugins"), exist_ok=True)
+        with io.open(os.path.join(self.cfg, "plugins", "installed_plugins.json"), "w", encoding="utf-8") as f:
+            json.dump({"version": 2, "plugins": {"orquestrador@" + self.MKT: [
+                {"scope": "user", "installPath": self.raiz, "version": "abc123"}]}}, f)
+
+    def hook(self, nome, entrada=""):
+        script = self.raiz.replace("\\", "/") + "/hooks/" + nome
+        return subprocess.run([self.sh, script], env=self.env, cwd=self.tmp, input=entrada,
+                              capture_output=True, text=True, encoding="utf-8", timeout=120)
+
+    def test_1_atualizacao_sh_chega_no_motor(self):
+        p = self.hook("atualizacao.sh")
+        self.assertEqual((p.returncode, p.stderr), (0, ""))
+        self.assertTrue(p.stdout.startswith("orquestrador: este plugin nao esta recebendo atualizacoes sozinho."),
+                        "o script nao chegou no motor: %r" % p.stdout)
+        self.assertIn("`%s`" % self.MKT, p.stdout)
+        self.assertEqual(self.hook("atualizacao.sh").stdout, "", "segundo aviso na mesma semana")
+
+    def test_2_retomar_sh_chega_no_motor(self):
+        sub = os.path.join(self.projects, "proj", "S", "subagents")
+        os.makedirs(sub)
+        with io.open(os.path.join(sub, "agent-a1.meta.json"), "w", encoding="utf-8") as f:
+            json.dump({"description": "[sonnet:edicao-logica] um", "model": "sonnet"}, f)
+        with io.open(os.path.join(sub, "agent-a1.jsonl"), "w", encoding="utf-8") as f:
+            f.write(json.dumps({"type": "assistant", "message": {
+                "id": "m1", "model": "claude-sonnet-5-5", "usage": {"output_tokens": 10}}}) + "\n")
+        p = self.hook("retomar.sh", json.dumps({"session_id": "S", "source": "compact"}))
+        self.assertEqual((p.returncode, p.stderr), (0, ""))
+        self.assertTrue(p.stdout.startswith("orquestrador: esta sessao ja despachou 1 operario"),
+                        "o script nao chegou no motor: %r" % p.stdout)
+
+    def test_3_sem_nada_a_dizer_ficam_calados(self):
+        p = self.hook("retomar.sh", json.dumps({"session_id": "vazia"}))
+        self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""))
+        self.env["ORQ_SEM_AVISO_ATUALIZACAO"] = "1"
+        p = self.hook("atualizacao.sh")
+        self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""))
+
+
 if __name__ == "__main__":
     unittest.main()

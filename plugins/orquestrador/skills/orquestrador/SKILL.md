@@ -1,6 +1,6 @@
 ---
 name: orquestrador
-description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de comecar a fazer sozinho - feature em varios arquivos, tela nova mais servidor, auditoria ou revisao ampla, migracao, bug que cruza componentes, lote de tarefas parecidas, pesquisa com varias fontes - e pra revisar codigo nao trivial que voce mesmo escreveu antes de subir. Tambem quando o usuario falar "orquestra", "orquestrar", "use a skill orquestrar", "usa os operarios", "joga pros agentes", "modo chefe", "modo god", "engenheiro", "mestre de obras", "manda o haiku/sonnet fazer", "divide o trabalho", "faz em paralelo", "como os operarios estao indo", "ficha dos modelos". NAO usa pra edicao de 1 ou 2 arquivos, pergunta rapida ou tarefa de 1 a 3 chamadas de ferramenta.
+description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de comecar a fazer sozinho - feature em varios arquivos, tela nova mais servidor, auditoria ou revisao ampla, migracao, bug que cruza componentes, lote de tarefas parecidas, pesquisa com varias fontes - e pra revisar codigo nao trivial que voce mesmo escreveu antes de subir. Tambem quando o usuario falar "orquestra", "orquestrar", "use a skill orquestrar", "usa os operarios", "joga pros agentes", "modo chefe", "modo god", "engenheiro", "mestre de obras", "manda o haiku/sonnet fazer", "divide o trabalho", "faz em paralelo", "como os operarios estao indo", "ficha dos modelos". Tarefa que o proprio projeto ja entrega a alguem (agente especialista do projeto ou regra no CLAUDE.md dizendo quem faz, ex.: redacao vai pro agente redator) continua com ele: nao abra esta skill por cima, salvo se o usuario pedir pelo nome. NAO usa pra edicao de 1 ou 2 arquivos, pergunta rapida ou tarefa de 1 a 3 chamadas de ferramenta.
 ---
 
 # Orquestrador: chefe + operarios que aprendem
@@ -13,6 +13,7 @@ Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engen
 
 ## Regra de uso
 
+- Fluxo do projeto vence, e so na parte dele. Se o CLAUDE.md ou um agente do PROPRIO projeto ja diz quem faz um tipo de tarefa (ex.: toda redacao vai pro agente redator do projeto), essa parte vai pra ele, com o agente e o modelo que o projeto manda: nao troque por `orq-*`. O resto do trabalho segue este ciclo normalmente, e isso vale tambem quando o usuario pediu a skill pelo nome. Projeto sem dono definido pra tarefa (a maioria) = regra normal, a skill abre sozinha.
 - O usuario pediu a skill (com qualquer das palavras da descricao): o primeiro despacho sai NESSA resposta.
 - Trabalho com 2 ou mais partes independentes: `ficha` e quebra ANTES de editar qualquer arquivo.
 - Ao despachar, 1 linha pro usuario: quem foi (modelo) pra que, e o que VOCE faz enquanto isso. Durante o trabalho, toda resposta diz quem esta vivo e o que falta. Se o usuario perguntar quem esta trabalhando, o que falta ou se acabou: responda antes.

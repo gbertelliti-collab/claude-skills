@@ -2,6 +2,15 @@
 
 O plugin não tem número de versão: cada commit na `main` chega em quem instalou (veja "Receber atualizações" no README). As entradas abaixo são por data.
 
+## 2026-11-17: a skill cede para o fluxo que o projeto já tem
+
+Retorno de quem instalou num projeto que não é de código: a skill abria sozinha em trabalho com várias partes e podia passar por cima de um fluxo próprio, em que a redação vai para um agente especialista.
+
+### Mudou
+
+- **Fluxo do projeto vence, e só na parte dele.** Se o `CLAUDE.md` ou um agente do próprio projeto já diz quem faz um tipo de tarefa, essa parte vai para ele; o orquestrador cuida do resto. Em projeto sem dono definido para a tarefa nada muda: a skill continua abrindo sozinha. A regra está na descrição da skill e no começo da "Regra de uso". O agente do projeto roda no modelo que o projeto definiu: antes, quando a skill abria, ela trocava o modelo dele.
+- **README:** seção "Se você já tem um fluxo próprio", com as três formas de limitar quando a skill abre.
+
 ## 2026-11-17: onda de melhorias a partir de projetos parecidos
 
 Pesquisa em orquestradores públicos, na documentação de plugins do Claude Code e em ferramentas de custo. As fontes de cada regra nova estão em `fundamentos.md`.

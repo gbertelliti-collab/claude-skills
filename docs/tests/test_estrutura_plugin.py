@@ -225,6 +225,27 @@ class TestEstrutura(unittest.TestCase):
         linhas = ler(orq).splitlines()
         self.assertLessEqual(len(linhas), 230, "SKILL.md do orquestrador com mais de 230 linhas")
 
+    def test_15_cede_pro_fluxo_do_projeto(self):
+        # a skill abre sozinha; quem ja tem fluxo proprio (agente especialista) nao pode ser atropelado
+        texto = ler(arquivos_skill()["orquestrador"])
+        desc = frontmatter(texto)["description"]
+        self.assertIn("Tarefa que o proprio projeto ja entrega a alguem", desc)
+        self.assertIn("nao abra esta skill por cima, salvo se o usuario pedir pelo nome", desc)
+        self.assertIn("- Fluxo do projeto vence, e so na parte dele.", texto)
+        # e nao pode virar freio pra uso comum: a regra normal tem que continuar escrita
+        self.assertIn("Usa em TODO trabalho com 2 ou mais partes independentes", desc)
+        self.assertIn("Projeto sem dono definido pra tarefa (a maioria) = regra normal, a skill abre sozinha.", texto)
+        for nome, caminho in sorted(arquivos_skill().items()):
+            with self.subTest(skill=nome):
+                d = frontmatter(ler(caminho))["description"]
+                self.assertLessEqual(len(d), 1024, "description passa de 1024 caracteres (limite das skills)")
+        for readme, frase in (("README.md", "### Se você já tem um fluxo próprio"),
+                              ("README.en.md", "### If you already have your own flow")):
+            with self.subTest(readme=readme):
+                r = ler(os.path.join(RAIZ, readme))
+                self.assertIn(frase, r)
+                self.assertIn("`Skill(orquestrador:orquestrador)`", r)
+
 
 if __name__ == "__main__":
     unittest.main()

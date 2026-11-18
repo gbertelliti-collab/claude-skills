@@ -293,6 +293,20 @@ chefe  Pronto. operarios: 3 tarefas, 3 de primeira | haiku fez 1 de 3
 
 O brief que o executor recebeu nesse exemplo está inteiro em [`exemplos/brief-nivel3-edicao.md`](plugins/orquestrador/skills/orquestrador/exemplos/brief-nivel3-edicao.md): trecho atual colado, decisão literal, tabela de casos e um aceite que consegue falhar.
 
+### Se você já tem um fluxo próprio
+
+A skill abre sozinha em trabalho com várias partes, e isso não muda em projeto comum. Só quando o seu projeto já entrega um tipo de tarefa a alguém (um agente especialista de redação, uma regra no `CLAUDE.md` dizendo quem faz) é que ela cede naquela parte: a tarefa vai para o seu agente, e o orquestrador cuida do resto.
+
+Para apertar mais, do mais leve ao mais firme:
+
+| Você quer | Faça |
+|---|---|
+| Que ela só abra quando você pedir | Uma linha no `CLAUDE.md` do projeto (ou no `~/.claude/CLAUDE.md`, para valer em tudo): `Use a skill orquestrador só quando eu pedir pelo nome.` |
+| Que o Claude não consiga abrir sozinho | Regra de negação em `permissions.deny` do `settings.json`: `Skill(orquestrador:orquestrador)`. Digitando `/orquestrador:orquestrador` ela continua abrindo. |
+| Desligar tudo por um tempo | `/plugin` e desative o `orquestrador` |
+
+A configuração `skillOverrides` do Claude Code não vale para skill de plugin, então ela não serve aqui.
+
 ### O motor
 
 ```bash

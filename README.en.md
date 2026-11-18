@@ -293,6 +293,20 @@ lead   Done. operarios: 3 tarefas, 3 de primeira | haiku fez 1 de 3
 
 The brief the executor received in this example is in full at [`exemplos/brief-nivel3-edicao.md`](plugins/orquestrador/skills/orquestrador/exemplos/brief-nivel3-edicao.md): current excerpt pasted in, literal decision, case table and an acceptance check that can fail.
 
+### If you already have your own flow
+
+The skill opens by itself on work with several parts, and that does not change in an ordinary project. Only when your project already hands a kind of task to someone (a specialist writing agent, a rule in `CLAUDE.md` saying who does it) does it yield on that part: the task goes to your agent, and the orchestrator handles the rest.
+
+To tighten it further, from lightest to firmest:
+
+| You want | Do this |
+|---|---|
+| It to open only when you ask | One line in the project's `CLAUDE.md` (or in `~/.claude/CLAUDE.md`, to apply everywhere): `Use the orquestrador skill only when I ask for it by name.` |
+| Claude to be unable to open it on its own | A deny rule in `permissions.deny` of `settings.json`: `Skill(orquestrador:orquestrador)`. Typing `/orquestrador:orquestrador` still opens it. |
+| To turn everything off for a while | `/plugin` and disable `orquestrador` |
+
+Claude Code's `skillOverrides` setting does not apply to plugin skills, so it is not an option here.
+
 ### The engine
 
 ```bash

@@ -1,68 +1,109 @@
 {
   "periodo": {
     "de": "2026-11-15",
-    "ate": "2026-11-17",
-    "dias": 3
+    "ate": "2026-11-23",
+    "dias": 6
   },
-  "tarefas": 144,
-  "sessoes": 5,
-  "projetos": 9,
+  "tarefas": 276,
+  "sessoes": 9,
+  "projetos": 12,
   "resultado": {
-    "de_primeira": 118,
-    "corrigido": 24,
-    "falhou": 2
+    "de_primeira": 231,
+    "corrigido": 41,
+    "falhou": 4
   },
-  "rodadas_max": 2,
-  "experimentos": 4,
+  "rodadas_max": 3,
+  "experimentos": 5,
   "por_modelo": {
     "haiku": {
-      "tarefas": 32,
-      "de_primeira": 31,
-      "saida_mediana": 12817,
-      "contexto_mediano": 102781,
-      "respostas_mediana": 4
+      "tarefas": 43,
+      "de_primeira": 42,
+      "saida_mediana": 11119,
+      "contexto_mediano": 100565,
+      "respostas_mediana": 5
     },
     "sonnet": {
-      "tarefas": 86,
-      "de_primeira": 71,
-      "saida_mediana": 14862,
-      "contexto_mediano": 106825,
-      "respostas_mediana": 10
+      "tarefas": 165,
+      "de_primeira": 133,
+      "saida_mediana": 14876,
+      "contexto_mediano": 102335,
+      "respostas_mediana": 13
     },
     "opus": {
-      "tarefas": 26,
-      "de_primeira": 16,
-      "saida_mediana": 181658,
-      "contexto_mediano": 380858,
-      "respostas_mediana": 114
+      "tarefas": 65,
+      "de_primeira": 53,
+      "saida_mediana": 81928,
+      "contexto_mediano": 268221,
+      "respostas_mediana": 54
+    },
+    "fable": {
+      "tarefas": 3,
+      "de_primeira": 3,
+      "saida_mediana": 77859,
+      "contexto_mediano": 270254,
+      "respostas_mediana": 43
     }
   },
   "por_tipo": [
     {
       "tipo": "revisao",
-      "tarefas": 37,
-      "de_primeira": 37,
+      "tarefas": 70,
+      "de_primeira": 70,
       "por_modelo": {
         "sonnet": [
-          31,
-          31
+          40,
+          40
         ],
         "opus": [
-          6,
-          6
+          30,
+          30
         ]
       },
       "falhou": 0,
       "corrigido": 0
     },
     {
-      "tipo": "leitura",
-      "tarefas": 31,
+      "tipo": "edicao-logica",
+      "tarefas": 61,
+      "de_primeira": 41,
+      "por_modelo": {
+        "sonnet": [
+          35,
+          48
+        ],
+        "opus": [
+          6,
+          13
+        ]
+      },
+      "falhou": 0,
+      "corrigido": 20
+    },
+    {
+      "tipo": "front",
+      "tarefas": 42,
       "de_primeira": 30,
       "por_modelo": {
+        "sonnet": [
+          28,
+          37
+        ],
+        "opus": [
+          2,
+          5
+        ]
+      },
+      "falhou": 1,
+      "corrigido": 11
+    },
+    {
+      "tipo": "leitura",
+      "tarefas": 36,
+      "de_primeira": 35,
+      "por_modelo": {
         "haiku": [
-          22,
-          22
+          27,
+          27
         ],
         "sonnet": [
           8,
@@ -73,51 +114,17 @@
       "corrigido": 0
     },
     {
-      "tipo": "edicao-logica",
-      "tarefas": 26,
-      "de_primeira": 13,
-      "por_modelo": {
-        "sonnet": [
-          11,
-          18
-        ],
-        "opus": [
-          2,
-          8
-        ]
-      },
-      "falhou": 0,
-      "corrigido": 13
-    },
-    {
-      "tipo": "front",
-      "tarefas": 21,
-      "de_primeira": 13,
-      "por_modelo": {
-        "sonnet": [
-          12,
-          17
-        ],
-        "opus": [
-          1,
-          4
-        ]
-      },
-      "falhou": 1,
-      "corrigido": 7
-    },
-    {
       "tipo": "pesquisa-web",
-      "tarefas": 10,
-      "de_primeira": 10,
+      "tarefas": 15,
+      "de_primeira": 15,
       "por_modelo": {
         "haiku": [
-          6,
-          6
+          10,
+          10
         ],
         "sonnet": [
-          3,
-          3
+          4,
+          4
         ],
         "opus": [
           1,
@@ -128,26 +135,17 @@
       "corrigido": 0
     },
     {
-      "tipo": "texto",
-      "tarefas": 6,
-      "de_primeira": 5,
-      "por_modelo": {
-        "sonnet": [
-          5,
-          6
-        ]
-      },
-      "falhou": 0,
-      "corrigido": 1
-    },
-    {
       "tipo": "coordenacao",
-      "tarefas": 5,
-      "de_primeira": 5,
+      "tarefas": 13,
+      "de_primeira": 13,
       "por_modelo": {
         "opus": [
-          5,
-          5
+          10,
+          10
+        ],
+        "fable": [
+          3,
+          3
         ]
       },
       "falhou": 0,
@@ -155,16 +153,16 @@
     },
     {
       "tipo": "teste",
-      "tarefas": 4,
-      "de_primeira": 2,
+      "tarefas": 11,
+      "de_primeira": 9,
       "por_modelo": {
         "haiku": [
-          1,
-          2
+          2,
+          3
         ],
         "sonnet": [
-          1,
-          1
+          7,
+          7
         ],
         "opus": [
           0,
@@ -173,6 +171,66 @@
       },
       "falhou": 0,
       "corrigido": 2
+    },
+    {
+      "tipo": "debug",
+      "tarefas": 7,
+      "de_primeira": 4,
+      "por_modelo": {
+        "sonnet": [
+          0,
+          3
+        ],
+        "opus": [
+          4,
+          4
+        ]
+      },
+      "falhou": 0,
+      "corrigido": 3
+    },
+    {
+      "tipo": "texto",
+      "tarefas": 7,
+      "de_primeira": 5,
+      "por_modelo": {
+        "sonnet": [
+          5,
+          7
+        ]
+      },
+      "falhou": 1,
+      "corrigido": 1
+    },
+    {
+      "tipo": "outro",
+      "tarefas": 6,
+      "de_primeira": 1,
+      "por_modelo": {
+        "sonnet": [
+          1,
+          5
+        ],
+        "opus": [
+          0,
+          1
+        ]
+      },
+      "falhou": 1,
+      "corrigido": 4
+    },
+    {
+      "tipo": "dados-sql",
+      "tarefas": 4,
+      "de_primeira": 4,
+      "por_modelo": {
+        "sonnet": [
+          4,
+          4
+        ]
+      },
+      "falhou": 0,
+      "corrigido": 0
     },
     {
       "tipo": "edicao-mecanica",
@@ -188,113 +246,104 @@
       "corrigido": 0
     },
     {
-      "tipo": "debug",
-      "tarefas": 1,
-      "de_primeira": 1,
+      "tipo": "busca",
+      "tarefas": 2,
+      "de_primeira": 2,
       "por_modelo": {
-        "opus": [
+        "haiku": [
+          1,
+          1
+        ],
+        "sonnet": [
           1,
           1
         ]
       },
       "falhou": 0,
       "corrigido": 0
-    },
-    {
-      "tipo": "outro",
-      "tarefas": 1,
-      "de_primeira": 0,
-      "por_modelo": {
-        "sonnet": [
-          0,
-          1
-        ]
-      },
-      "falhou": 0,
-      "corrigido": 1
     }
   ],
   "custo": {
-    "sessoes": 5,
-    "agentes": 351,
-    "respostas": 17604,
+    "sessoes": 9,
+    "agentes": 586,
+    "respostas": 35329,
     "por_modelo": {
       "fable": {
-        "agentes": 13,
-        "respostas": 1886,
-        "pct": 25.51
+        "agentes": 18,
+        "respostas": 2421,
+        "pct": 16.82
       },
       "opus": {
-        "agentes": 204,
-        "respostas": 13859,
-        "pct": 71.33
+        "agentes": 313,
+        "respostas": 27696,
+        "pct": 78.28
       },
       "sonnet": {
-        "agentes": 98,
-        "respostas": 1612,
-        "pct": 3.0
+        "agentes": 208,
+        "respostas": 4887,
+        "pct": 4.81
       },
       "haiku": {
-        "agentes": 36,
-        "respostas": 247,
-        "pct": 0.15
+        "agentes": 47,
+        "respostas": 325,
+        "pct": 0.09
       }
     },
     "por_componente": {
       "entrada": 0.01,
-      "leitura_cache": 46.21,
-      "escrita_cache": 31.84,
-      "saida": 21.94
+      "leitura_cache": 48.37,
+      "escrita_cache": 30.98,
+      "saida": 20.64
     },
     "por_papel": {
       "chefe": {
-        "agentes": 5,
-        "respostas": 3536,
-        "pct": 34.1
+        "agentes": 9,
+        "respostas": 9407,
+        "pct": 38.79
       },
       "orq-leitor": {
-        "agentes": 31,
-        "respostas": 223,
-        "pct": 0.23
+        "agentes": 43,
+        "respostas": 324,
+        "pct": 0.15
       },
       "orq-executor": {
-        "agentes": 80,
-        "respostas": 4705,
-        "pct": 20.46
+        "agentes": 165,
+        "respostas": 8568,
+        "pct": 16.67
       },
       "orq-revisor": {
-        "agentes": 38,
-        "respostas": 902,
-        "pct": 2.61
+        "agentes": 64,
+        "respostas": 1397,
+        "pct": 2.32
       },
       "orq-mestre": {
-        "agentes": 3,
-        "respostas": 148,
-        "pct": 1.1
+        "agentes": 9,
+        "respostas": 446,
+        "pct": 1.83
       },
       "general-purpose": {
-        "agentes": 53,
-        "respostas": 3451,
-        "pct": 23.53
+        "agentes": 126,
+        "respostas": 9594,
+        "pct": 27.74
       },
       "outros": {
-        "agentes": 141,
-        "respostas": 4639,
-        "pct": 17.97
+        "agentes": 170,
+        "respostas": 5593,
+        "pct": 12.51
       }
     },
     "por_andar": {
       "0": {
-        "agentes": 5,
-        "pct": 34.1
+        "agentes": 9,
+        "pct": 38.79
       },
       "1": {
-        "agentes": 312,
-        "pct": 65.03
+        "agentes": 508,
+        "pct": 57.44
       },
       "2": {
-        "agentes": 34,
-        "pct": 0.87
+        "agentes": 69,
+        "pct": 3.77
       },
       "3+": {
         "agentes": 0,
@@ -303,7 +352,7 @@
     },
     "simulacao": {
       "respostas_menos_20": 20.0,
-      "contexto_inicial_menos_20k": 3.3
+      "contexto_inicial_menos_20k": 3.7
     }
   }
 }

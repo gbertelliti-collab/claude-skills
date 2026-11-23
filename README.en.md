@@ -41,7 +41,7 @@ Then just ask for work with 2 or more parts ("usa os operários" (use the worker
 
 <!-- uso-real:periodo:inicio -->
 
-Everything below comes from the engine's own log and from Claude Code transcripts, in real work between Nov 15 and 17, 2026. None of it is an estimate: these are counts. The aggregate snapshot is in [`docs/uso-real.json`](docs/uso-real.json) and the charts are generated from it by [`docs/graficos.py`](docs/graficos.py).
+Everything below comes from the engine's own log and from Claude Code transcripts, in real work between Nov 15 and 23, 2026. None of it is an estimate: these are counts. The aggregate snapshot is in [`docs/uso-real.json`](docs/uso-real.json) and the charts are generated from it by [`docs/graficos.py`](docs/graficos.py).
 
 <!-- uso-real:periodo:fim -->
 
@@ -51,7 +51,7 @@ Everything below comes from the engine's own log and from Claude Code transcript
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/en/numeros-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/en/numeros-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/en/numeros-claro-estreito.svg">
-  <img alt="144 tasks delegated, 82% passed first try, 2 went back to the lead, 3.2% of the cost on Haiku and Sonnet agents" src="docs/img/en/numeros-claro.svg" width="100%">
+  <img alt="276 tasks delegated, 84% passed first try, 4 went back to the lead, 4.9% of the cost on Haiku and Sonnet agents" src="docs/img/en/numeros-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-numeros:fim -->
@@ -64,16 +64,16 @@ Everything below comes from the engine's own log and from Claude Code transcript
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/en/tipos-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/en/tipos-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/en/tipos-claro-estreito.svg">
-  <img alt="Result by task type: review 37 of 37 first try; reading 30 of 31 first try; logic edit 13 of 26 first try; front end 13 of 21 first try; web research 10 of 10 first try; writing 5 of 6 first try; coordination 5 of 5 first try; tests 2 of 4 first try; other 3 types 3 of 4 first try" src="docs/img/en/tipos-claro.svg" width="100%">
+  <img alt="Result by task type: review 70 of 70 first try; logic edit 41 of 61 first try; front end 30 of 42 first try; reading 35 of 36 first try; web research 15 of 15 first try; coordination 13 of 13 first try; tests 9 of 11 first try; debug 4 of 7 first try; writing 5 of 7 first try; data and SQL 4 of 4 first try; other 3 types 5 of 10 first try" src="docs/img/en/tipos-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-tipos:fim -->
 
 <!-- uso-real:tipos-texto:inicio -->
 
-- **Reading, research and review:** 77 of 78 tasks passed on the first check; Haiku got 28 of them and passed 28 first time.
-- **Writing code (logic edits and front end):** 26 of 47 passed on the first check; of the other 21, the worker itself fixed 20 and the lead finished 1.
-- **Overall:** of the 26 that did not pass first time, the worker itself fixed 24 within 2 correction rounds and the lead finished 2.
+- **Reading, research and review:** 122 of 123 tasks passed on the first check; Haiku got 38 of them and passed 38 first time.
+- **Writing code (logic edits and front end):** 71 of 103 passed on the first check; of the other 32, the worker itself fixed 31 and the lead finished 1.
+- **Overall:** of the 45 that did not pass first time, the worker itself fixed 41 within 3 correction rounds and the lead finished 4.
 
 <!-- uso-real:tipos-texto:fim -->
 
@@ -83,13 +83,14 @@ Reading, researching and reviewing are what is most worth delegating. Writing co
 
 | model | tasks | first try | replies per task | output per task | peak context |
 |---|---:|---:|---:|---:|---:|
-| Haiku | 32 | 31 (97%) | 4 | 13k tokens | 103k |
-| Sonnet | 86 | 71 (83%) | 10 | 15k tokens | 107k |
-| Opus | 26 | 16 (62%) | 114 | 182k tokens | 381k |
+| Haiku | 43 | 42 (98%) | 5 | 11k tokens | 101k |
+| Sonnet | 165 | 133 (81%) | 13 | 15k tokens | 102k |
+| Opus | 65 | 53 (82%) | 54 | 82k tokens | 268k |
+| Fable | 3 | 3 (100%) | 43 | 78k tokens | 270k |
 
 <!-- uso-real:modelos:fim -->
 
-The last three columns are medians. The lower rate for Opus does not mean it fails more: it got the hardest tasks (heavy logic edits, large screens, workstream coordination), which are long and rarely pass on the first check with any model. The replies and output columns show how long they are.
+The last three columns are medians. The overall rate misleads when models did different work: more than half of the Opus tasks were review and coordination, which almost always count as "first check". Writing code (logic edits and front end) it passed fewer than half on the first check, against three out of four for Sonnet, on much larger tasks, as the replies and output columns show. The full table below splits it by type.
 
 <details>
 <summary>Full table: task type by model</summary>
@@ -100,19 +101,21 @@ Each cell is "passed on the first check / tasks".
 
 <!-- uso-real:tipo-modelo:inicio -->
 
-| type | Haiku | Sonnet | Opus |
-|---|---:|---:|---:|
-| review | | 31 / 31 | 6 / 6 |
-| reading | 22 / 22 | 8 / 9 | |
-| logic edit | | 11 / 18 | 2 / 8 |
-| front end | | 12 / 17 | 1 / 4 |
-| web research | 6 / 6 | 3 / 3 | 1 / 1 |
-| writing | | 5 / 6 | |
-| coordination | | | 5 / 5 |
-| tests | 1 / 2 | 1 / 1 | 0 / 1 |
-| mechanical edit | 2 / 2 | | |
-| debug | | | 1 / 1 |
-| other | | 0 / 1 | |
+| type | Haiku | Sonnet | Opus | Fable |
+|---|---:|---:|---:|---:|
+| review | | 40 / 40 | 30 / 30 | |
+| logic edit | | 35 / 48 | 6 / 13 | |
+| front end | | 28 / 37 | 2 / 5 | |
+| reading | 27 / 27 | 8 / 9 | | |
+| web research | 10 / 10 | 4 / 4 | 1 / 1 | |
+| coordination | | | 10 / 10 | 3 / 3 |
+| tests | 2 / 3 | 7 / 7 | 0 / 1 | |
+| debug | | 0 / 3 | 4 / 4 | |
+| writing | | 5 / 7 | | |
+| other | | 1 / 5 | 0 / 1 | |
+| data and SQL | | 4 / 4 | | |
+| mechanical edit | 2 / 2 | | | |
+| search | 1 / 1 | 1 / 1 | | |
 
 <!-- uso-real:tipo-modelo:fim -->
 
@@ -126,19 +129,19 @@ Each cell is "passed on the first check / tasks".
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/en/custo-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/en/custo-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/en/custo-claro-estreito.svg">
-  <img alt="Share of agents and share of cost by model: Opus 58.1% of agents and 71.3% of cost; Fable 3.7% of agents and 25.5% of cost; Sonnet 27.9% of agents and 3.0% of cost; Haiku 10.3% of agents and 0.1% of cost" src="docs/img/en/custo-claro.svg" width="100%">
+  <img alt="Share of agents and share of cost by model: Opus 53.4% of agents and 78.3% of cost; Fable 3.1% of agents and 16.8% of cost; Sonnet 35.5% of agents and 4.8% of cost; Haiku 8.0% of agents and 0.1% of cost" src="docs/img/en/custo-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-custo:fim -->
 
 <!-- uso-real:custo-texto:inicio -->
 
-Measured by `custo.py` over the same 5 sessions, whole: 351 agents (the 5 session leads are counted) and 17,604 replies.
+Measured by `custo.py` over the same 9 sessions, whole: 586 agents (the 9 session leads are counted) and 35,329 replies.
 
-- **Haiku and Sonnet on the bill:** the 134 Haiku and Sonnet agents are 38% of the agents and 3.2% of the cost.
-- **Rereading vs. writing:** 78% of the cost is rereading context on every reply (46% cache reads, 32% cache writes); what the models write is 22%.
-- **By role:** session leads take 34%; generic agents (`general-purpose`), 24%; `orq-executor` executors, 20%; `orq-revisor` reviewers, 2.6%; `orq-mestre` foremen, 1.1%; `orq-leitor` readers, 0.2%; agents from outside the plugin, 18%.
-- **Simulation:** 20% fewer replies cuts 20% of the cost; shrinking each agent's starting context by 20k tokens cuts 3.3%.
+- **Haiku and Sonnet on the bill:** the 255 Haiku and Sonnet agents are 44% of the agents and 4.9% of the cost.
+- **Rereading vs. writing:** 79% of the cost is rereading context on every reply (48% cache reads, 31% cache writes); what the models write is 21%.
+- **By role:** session leads take 39%; generic agents (`general-purpose`), 28%; `orq-executor` executors, 17%; `orq-revisor` reviewers, 2.3%; `orq-mestre` foremen, 1.8%; `orq-leitor` readers, 0.2%; agents from outside the plugin, 13%.
+- **Simulation:** 20% fewer replies cuts 20% of the cost; shrinking each agent's starting context by 20k tokens cuts 3.7%.
 
 <!-- uso-real:custo-texto:fim -->
 
@@ -160,7 +163,7 @@ Lessons the log kept from tasks that passed on the first check and that now go i
 
 ### What nine days of use changed in the plugin
 
-On 2026-11-23 the log held 267 tasks across 12 projects. Analysing it turned up five weak spots, and each one became a change in the engine or a rule in the skill:
+The analysis was done on 2026-11-23, with the log at 267 tasks across 12 projects (the numbers above come from a snapshot taken later, which already includes the tasks of this very change). It turned up five weak spots, and each one became a change in the engine or a rule in the skill:
 
 | what the log showed | what changed |
 |---|---|
@@ -221,7 +224,7 @@ When the job splits into 2 workstreams that do not touch and goes past about 8 t
 
 <!-- uso-real:modo-god-texto:inicio -->
 
-In real use, 34 of the 351 agents ran this way, on the second floor (a worker opened by a foreman), and cost 0.9% of the total; the 3 foremen added up to 1.1%.
+In real use, 69 of the 586 agents ran this way, on the second floor (a worker opened by a foreman), and cost 3.8% of the total; the 9 foremen added up to 1.8%.
 
 <!-- uso-real:modo-god-texto:fim -->
 
@@ -336,24 +339,26 @@ python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|conferi
 python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
-Claude Code reports the skill folder when it loads, and the lead itself runs these commands day to day. To get an idea of the output, this is an excerpt of the real scorecard on Nov 17, 2026 (lessons shortened). The engine prints in Portuguese:
+Claude Code reports the skill folder when it loads, and the lead itself runs these commands day to day. To get an idea of the output, this is an excerpt of the real scorecard on Nov 23, 2026 (lessons shortened). The engine prints in Portuguese:
 
 ```text
+tamanho: escrita que o operario fecha em menos de 30 respostas passa de primeira 66/79; com 30 ou mais, 23/47 -> um objetivo por tarefa; a que nao cabe vira duas
 leitura -> haiku brief 2 (rota padrao)
-  licao: conferir doc pelo curl do .md da pagina; o WebFetch resume
-  stats: haiku b1 1a 1/1 ok 1/1; b2 1a 19/19 ok 19/19 ~10k | sonnet b2 1a 8/9 ok 8/9 ~22k
+  licao: perguntas com letra e arquivo:linha; as amostras conferidas por grep bateram
+  stats: haiku b1 1a 1/1 ok 1/1; b2 1a 19/19 ok 19/19 ~11k | sonnet b2 1a 8/9 ok 8/9 ~22k
 edicao-logica -> sonnet brief 3 (rota padrao)
-  licao: dar no brief TODAS as ocorrencias do padrao (grep), nao so a do achado
-  stats: sonnet b2 1a 0/1 ok 1/1; b3 1a 10/16 ok 16/16 ~27k | opus b2 1a 0/5 ok 5/5 ~272k; b3 1a 2/3 ok 3/3
-teste -> sonnet brief 3 (rota padrao)
-  experimento: haiku brief 3 (sem prova com brief 3 (n=2); feitos 2 de 4)
-  stats: haiku b3 1a 1/2 ok 2/2 ~61k | sonnet b3 1a 1/1 ok 1/1 ~8k | opus b2 1a 0/1 ok 1/1 ~215k
+  no tipo: 8 de 11 entregas com erro foram de estado, somando os modelos -> no brief: a ordem dos eventos e o que acontece ao repetir, cancelar, recarregar
+  faltou no brief: desenhar o caso do lote fechado com valor diferente; a prova tem que cair sem cada ramo
+  experimento: haiku brief 3 (sonnet acerta 19/20 de primeira (todos os briefs): testar haiku na tarefa mais mecanica do tipo; feitos 0 de 4)
+  stats: sonnet b3 1a 19/20 ok 20/20 ~13k | opus b2 1a 0/5 ok 5/5 ~272k; b3 1a 6/8 ok 8/8 ~185k
+revisao -> sonnet brief 2 (rota padrao)
+  stats: sonnet b2 1a 20/20 ok 20/20 ~9k achados 8 confirmados 8 em 1 revisoes | opus b2 1a 20/20 ok 20/20 ~40k
 ```
 
-How to read it: `b2 1a 19/19` means "with a level 2 brief, 19 of 19 passed on the first try" (`1a` = first try); `ok` (closed) also counts those that closed after a correction; `licao` is the lesson; `~10k` is the median output in tokens. The scorecard looks at the last 20 log entries of each pair, so an error that stopped happening drops out by itself. And the line that closes a job, also real, from the same day:
+How to read it: `b2 1a 19/19` means "with a level 2 brief, 19 of 19 passed on the first try" (`1a` = first try); `ok` (closed) also counts those that closed after a correction; `licao` is the lesson; `~11k` is the median output in tokens; `tamanho:` (size) compares small and large tasks in your own log; `no tipo:` is the most common error class for that task type, with what to reinforce in the brief; `faltou no brief:` is what the lead left out of the brief the last few times; `achados` and `confirmados` are the reviewer's score (findings and confirmed). The scorecard looks at the last 20 log entries of each pair, so an error that stopped happening drops out by itself. And the line that closes a job, also real, from the same day (all sessions, 30 days):
 
 ```text
-operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam | haiku 31/32 de primeira; sonnet 71/86 de primeira; opus 16/26 de primeira | saida: haiku 0,41M · sonnet 0,77M · opus 3,8M | haiku fez 32 de 144
+operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam, 4 anuladas | haiku 42/43 de primeira; sonnet 133/165 de primeira; opus 53/65 de primeira; fable 3/3 de primeira | saida: haiku 0,54M · sonnet 2,4M · opus 7,1M · fable 0,23M | haiku fez 43 de 276 | opus em execucao: 24 tarefas, 4,6M de saida, 12 de primeira | grandes: 47 de 126 de escrita, 23 de primeira
 ```
 
 ### Configuration (all optional)

@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 324" width="840" height="324" role="img" aria-label="Parcela dos agentes e parcela do custo por modelo: Opus 58,1% dos agentes e 71,3% do custo; Fable 3,7% dos agentes e 25,5% do custo; Sonnet 27,9% dos agentes e 3,0% do custo; Haiku 10,3% dos agentes e 0,1% do custo" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
-<title>Parcela dos agentes e parcela do custo por modelo: Opus 58,1% dos agentes e 71,3% do custo; Fable 3,7% dos agentes e 25,5% do custo; Sonnet 27,9% dos agentes e 3,0% do custo; Haiku 10,3% dos agentes e 0,1% do custo</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 324" width="840" height="324" role="img" aria-label="Parcela dos agentes e parcela do custo por modelo: Opus 53,4% dos agentes e 78,3% do custo; Fable 3,1% dos agentes e 16,8% do custo; Sonnet 35,5% dos agentes e 4,8% do custo; Haiku 8,0% dos agentes e 0,1% do custo" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Helvetica,Arial,sans-serif">
+<title>Parcela dos agentes e parcela do custo por modelo: Opus 53,4% dos agentes e 78,3% do custo; Fable 3,1% dos agentes e 16,8% do custo; Sonnet 35,5% dos agentes e 4,8% do custo; Haiku 8,0% dos agentes e 0,1% do custo</title>
 <text x="0" y="24" font-size="16" fill="#f0f6fc" font-weight="700" text-anchor="start">Quem trabalha e quem custa</text>
-<text x="0" y="45" font-size="13" fill="#9198a1" font-weight="400" text-anchor="start">351 agentes e 17.604 respostas em 5 sessões inteiras · custo em tokens ponderado pelo preço de cada modelo</text>
+<text x="0" y="45" font-size="13" fill="#9198a1" font-weight="400" text-anchor="start">586 agentes e 35.329 respostas em 9 sessões inteiras · custo em tokens ponderado pelo preço de cada modelo</text>
 <rect x="0" y="63" width="10" height="10" rx="2" fill="#3987e5"/>
 <text x="16" y="72" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start">parcela dos agentes</text>
 <rect x="169" y="63" width="10" height="10" rx="2" fill="#d95926"/>
@@ -16,27 +16,27 @@
 <text x="750.0" y="313" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="middle">80%</text>
 <path d="M149 88V296" stroke="#3d444d" stroke-width="1"/>
 <text x="138" y="113" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="end">Opus</text>
-<text x="138" y="129" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">204 agentes</text>
-<path d="M150.0 100.0h431.9a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-431.9z" fill="#3987e5"/>
-<text x="593.8974358974359" y="112.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">58,1%</text>
-<path d="M150.0 118.0h531.0a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-531.0z" fill="#d95926"/>
-<text x="692.975" y="130.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">71,3%</text>
+<text x="138" y="129" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">313 agentes</text>
+<path d="M150.0 100.0h396.6a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-396.6z" fill="#3987e5"/>
+<text x="558.5972696245734" y="112.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">53,4%</text>
+<path d="M150.0 118.0h583.1a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-583.1z" fill="#d95926"/>
+<text x="745.1" y="130.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">78,3%</text>
 <text x="138" y="165" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="end">Fable</text>
-<text x="138" y="181" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">13 agentes</text>
-<path d="M150.0 152.0h23.8a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-23.8z" fill="#3987e5"/>
-<text x="185.77777777777777" y="164.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">3,7%</text>
-<path d="M150.0 170.0h187.3a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-187.3z" fill="#d95926"/>
-<text x="349.32500000000005" y="182.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">25,5%</text>
+<text x="138" y="181" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">18 agentes</text>
+<path d="M150.0 152.0h19.0a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-19.0z" fill="#3987e5"/>
+<text x="181.03754266211604" y="164.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">3,1%</text>
+<path d="M150.0 170.0h122.2a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-122.2z" fill="#d95926"/>
+<text x="284.15" y="182.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">16,8%</text>
 <text x="138" y="217" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="end">Sonnet</text>
-<text x="138" y="233" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">98 agentes</text>
-<path d="M150.0 204.0h205.4a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-205.4z" fill="#3987e5"/>
-<text x="367.40170940170935" y="216.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">27,9%</text>
-<path d="M150.0 222.0h18.5a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-18.5z" fill="#d95926"/>
-<text x="180.5" y="234.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">3,0%</text>
+<text x="138" y="233" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">208 agentes</text>
+<path d="M150.0 204.0h262.2a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-262.2z" fill="#3987e5"/>
+<text x="424.21160409556313" y="216.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">35,5%</text>
+<path d="M150.0 222.0h32.1a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-32.1z" fill="#d95926"/>
+<text x="194.075" y="234.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">4,8%</text>
 <text x="138" y="269" font-size="13.5" fill="#f0f6fc" font-weight="600" text-anchor="end">Haiku</text>
-<text x="138" y="285" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">36 agentes</text>
-<path d="M150.0 256.0h72.9a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-72.9z" fill="#3987e5"/>
-<text x="234.92307692307693" y="268.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">10,3%</text>
+<text x="138" y="285" font-size="11.5" fill="#7d8590" font-weight="400" text-anchor="end">47 agentes</text>
+<path d="M150.0 256.0h56.2a4.0 4.0 0 0 1 4.0 4.0v8.0a4.0 4.0 0 0 1 -4.0 4.0h-56.2z" fill="#3987e5"/>
+<text x="218.15358361774744" y="268.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">8,0%</text>
 <path d="M150.0 274.0h1.0a1.0 1.0 0 0 1 1.0 1.0v14.0a1.0 1.0 0 0 1 -1.0 1.0h-1.0z" fill="#d95926"/>
 <text x="160" y="286.5" font-size="12.5" fill="#9198a1" font-weight="400" text-anchor="start" stroke="#0d1117" stroke-width="5" paint-order="stroke" stroke-linejoin="round">0,1%</text>
 </svg>

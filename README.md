@@ -41,7 +41,7 @@ Depois é só pedir trabalho com 2 ou mais partes ("usa os operários", "divide 
 
 <!-- uso-real:periodo:inicio -->
 
-Tudo abaixo saiu do registro do próprio motor e dos transcripts do Claude Code, em trabalho de verdade entre 15 e 17/11/2026. Nada é estimativa: são contagens. O retrato agregado está em [`docs/uso-real.json`](docs/uso-real.json) e os gráficos são gerados dele por [`docs/graficos.py`](docs/graficos.py).
+Tudo abaixo saiu do registro do próprio motor e dos transcripts do Claude Code, em trabalho de verdade entre 15 e 23/11/2026. Nada é estimativa: são contagens. O retrato agregado está em [`docs/uso-real.json`](docs/uso-real.json) e os gráficos são gerados dele por [`docs/graficos.py`](docs/graficos.py).
 
 <!-- uso-real:periodo:fim -->
 
@@ -51,7 +51,7 @@ Tudo abaixo saiu do registro do próprio motor e dos transcripts do Claude Code,
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/numeros-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/numeros-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/numeros-claro-estreito.svg">
-  <img alt="144 tarefas delegadas, 82% aprovadas de primeira, 2 voltaram para o chefe, 3,2% do custo nos agentes Haiku e Sonnet" src="docs/img/numeros-claro.svg" width="100%">
+  <img alt="276 tarefas delegadas, 84% aprovadas de primeira, 4 voltaram para o chefe, 4,9% do custo nos agentes Haiku e Sonnet" src="docs/img/numeros-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-numeros:fim -->
@@ -64,16 +64,16 @@ Tudo abaixo saiu do registro do próprio motor e dos transcripts do Claude Code,
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/tipos-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/tipos-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/tipos-claro-estreito.svg">
-  <img alt="Resultado por tipo de tarefa: revisão 37 de 37 de primeira; leitura 30 de 31 de primeira; edição lógica 13 de 26 de primeira; front 13 de 21 de primeira; pesquisa web 10 de 10 de primeira; texto 5 de 6 de primeira; coordenação 5 de 5 de primeira; teste 2 de 4 de primeira; outros 3 tipos 3 de 4 de primeira" src="docs/img/tipos-claro.svg" width="100%">
+  <img alt="Resultado por tipo de tarefa: revisão 70 de 70 de primeira; edição lógica 41 de 61 de primeira; front 30 de 42 de primeira; leitura 35 de 36 de primeira; pesquisa web 15 de 15 de primeira; coordenação 13 de 13 de primeira; teste 9 de 11 de primeira; debug 4 de 7 de primeira; texto 5 de 7 de primeira; dados e SQL 4 de 4 de primeira; outros 3 tipos 5 de 10 de primeira" src="docs/img/tipos-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-tipos:fim -->
 
 <!-- uso-real:tipos-texto:inicio -->
 
-- **Ler, pesquisar e revisar:** 77 de 78 tarefas passaram de primeira; o Haiku recebeu 28 delas e passou 28 de primeira.
-- **Escrever código (edição lógica e front):** 26 de 47 passaram de primeira; das outras 21, 20 o próprio operário corrigiu e 1 o chefe terminou.
-- **No total:** das 26 que não passaram de primeira, 24 o próprio operário corrigiu em até 2 rodadas e 2 o chefe terminou.
+- **Ler, pesquisar e revisar:** 122 de 123 tarefas passaram de primeira; o Haiku recebeu 38 delas e passou 38 de primeira.
+- **Escrever código (edição lógica e front):** 71 de 103 passaram de primeira; das outras 32, 31 o próprio operário corrigiu e 1 o chefe terminou.
+- **No total:** das 45 que não passaram de primeira, 41 o próprio operário corrigiu em até 3 rodadas e 4 o chefe terminou.
 
 <!-- uso-real:tipos-texto:fim -->
 
@@ -83,13 +83,14 @@ Ler, pesquisar e revisar é o que mais vale delegar. Escrever código é onde a 
 
 | modelo | tarefas | de primeira | respostas por tarefa | saída por tarefa | contexto máximo |
 |---|---:|---:|---:|---:|---:|
-| Haiku | 32 | 31 (97%) | 4 | 13 mil tokens | 103 mil |
-| Sonnet | 86 | 71 (83%) | 10 | 15 mil tokens | 107 mil |
-| Opus | 26 | 16 (62%) | 114 | 182 mil tokens | 381 mil |
+| Haiku | 43 | 42 (98%) | 5 | 11 mil tokens | 101 mil |
+| Sonnet | 165 | 133 (81%) | 13 | 15 mil tokens | 102 mil |
+| Opus | 65 | 53 (82%) | 54 | 82 mil tokens | 268 mil |
+| Fable | 3 | 3 (100%) | 43 | 78 mil tokens | 270 mil |
 
 <!-- uso-real:modelos:fim -->
 
-As três últimas colunas são medianas. A taxa menor do Opus não quer dizer que ele erra mais: ele recebeu as tarefas mais difíceis (edição lógica pesada, telas grandes, coordenação de frente), que são longas e raramente saem de primeira com qualquer modelo. As colunas de respostas e de saída mostram o tamanho delas.
+As três últimas colunas são medianas. A taxa geral engana quando os modelos fizeram trabalhos diferentes: mais da metade das tarefas do Opus foi revisão e coordenação, que quase sempre contam como "de primeira". Escrevendo código (edição lógica e front) ele passou menos da metade de primeira, contra três em cada quatro do Sonnet, em tarefas bem maiores, como mostram as colunas de respostas e de saída. A tabela completa abaixo separa por tipo.
 
 <details>
 <summary>Tabela completa: tipo de tarefa por modelo</summary>
@@ -100,19 +101,21 @@ Cada célula é "passaram de primeira / tarefas".
 
 <!-- uso-real:tipo-modelo:inicio -->
 
-| tipo | Haiku | Sonnet | Opus |
-|---|---:|---:|---:|
-| revisão | | 31 / 31 | 6 / 6 |
-| leitura | 22 / 22 | 8 / 9 | |
-| edição lógica | | 11 / 18 | 2 / 8 |
-| front | | 12 / 17 | 1 / 4 |
-| pesquisa web | 6 / 6 | 3 / 3 | 1 / 1 |
-| texto | | 5 / 6 | |
-| coordenação | | | 5 / 5 |
-| teste | 1 / 2 | 1 / 1 | 0 / 1 |
-| edição mecânica | 2 / 2 | | |
-| debug | | | 1 / 1 |
-| outro | | 0 / 1 | |
+| tipo | Haiku | Sonnet | Opus | Fable |
+|---|---:|---:|---:|---:|
+| revisão | | 40 / 40 | 30 / 30 | |
+| edição lógica | | 35 / 48 | 6 / 13 | |
+| front | | 28 / 37 | 2 / 5 | |
+| leitura | 27 / 27 | 8 / 9 | | |
+| pesquisa web | 10 / 10 | 4 / 4 | 1 / 1 | |
+| coordenação | | | 10 / 10 | 3 / 3 |
+| teste | 2 / 3 | 7 / 7 | 0 / 1 | |
+| debug | | 0 / 3 | 4 / 4 | |
+| texto | | 5 / 7 | | |
+| outro | | 1 / 5 | 0 / 1 | |
+| dados e SQL | | 4 / 4 | | |
+| edição mecânica | 2 / 2 | | | |
+| busca | 1 / 1 | 1 / 1 | | |
 
 <!-- uso-real:tipo-modelo:fim -->
 
@@ -126,19 +129,19 @@ Cada célula é "passaram de primeira / tarefas".
   <source media="(prefers-color-scheme: dark) and (max-width: 600px)" srcset="docs/img/custo-escuro-estreito.svg">
   <source media="(prefers-color-scheme: dark)" srcset="docs/img/custo-escuro.svg">
   <source media="(max-width: 600px)" srcset="docs/img/custo-claro-estreito.svg">
-  <img alt="Parcela dos agentes e parcela do custo por modelo: Opus 58,1% dos agentes e 71,3% do custo; Fable 3,7% dos agentes e 25,5% do custo; Sonnet 27,9% dos agentes e 3,0% do custo; Haiku 10,3% dos agentes e 0,1% do custo" src="docs/img/custo-claro.svg" width="100%">
+  <img alt="Parcela dos agentes e parcela do custo por modelo: Opus 53,4% dos agentes e 78,3% do custo; Fable 3,1% dos agentes e 16,8% do custo; Sonnet 35,5% dos agentes e 4,8% do custo; Haiku 8,0% dos agentes e 0,1% do custo" src="docs/img/custo-claro.svg" width="100%">
 </picture>
 
 <!-- uso-real:img-custo:fim -->
 
 <!-- uso-real:custo-texto:inicio -->
 
-Medição do `custo.py` nas mesmas 5 sessões, inteiras: 351 agentes (os 5 chefes de sessão entram na conta) e 17.604 respostas.
+Medição do `custo.py` nas mesmas 9 sessões, inteiras: 586 agentes (os 9 chefes de sessão entram na conta) e 35.329 respostas.
 
-- **Haiku e Sonnet na conta:** os 134 agentes Haiku e Sonnet são 38% dos agentes e 3,2% do custo.
-- **Reler ou escrever:** 78% do custo é reler contexto a cada resposta (46% leitura de cache, 32% escrita de cache); o que os modelos escrevem é 22%.
-- **Por papel:** os 5 chefes de sessão ficam com 34%; agentes genéricos (`general-purpose`), 24%; executores `orq-executor`, 20%; revisores `orq-revisor`, 2,6%; mestres `orq-mestre`, 1,1%; leitores `orq-leitor`, 0,2%; agentes de fora do plugin, 18%.
-- **Simulação:** 20% menos respostas corta 20% do custo; encolher em 20 mil tokens o contexto inicial de cada agente corta 3,3%.
+- **Haiku e Sonnet na conta:** os 255 agentes Haiku e Sonnet são 44% dos agentes e 4,9% do custo.
+- **Reler ou escrever:** 79% do custo é reler contexto a cada resposta (48% leitura de cache, 31% escrita de cache); o que os modelos escrevem é 21%.
+- **Por papel:** os 9 chefes de sessão ficam com 39%; agentes genéricos (`general-purpose`), 28%; executores `orq-executor`, 17%; revisores `orq-revisor`, 2,3%; mestres `orq-mestre`, 1,8%; leitores `orq-leitor`, 0,2%; agentes de fora do plugin, 13%.
+- **Simulação:** 20% menos respostas corta 20% do custo; encolher em 20 mil tokens o contexto inicial de cada agente corta 3,7%.
 
 <!-- uso-real:custo-texto:fim -->
 
@@ -160,7 +163,7 @@ Lições que o registro guardou de tarefas que passaram de primeira e que hoje e
 
 ### O que nove dias de uso mudaram no plugin
 
-Em 23/11/2026 o registro tinha 267 tarefas em 12 projetos. A análise dele achou cinco pontos fracos, e cada um virou mudança no motor ou regra na skill:
+A análise foi feita em 23/11/2026, com o registro em 267 tarefas de 12 projetos (os números acima são de um retrato tirado depois, já com as tarefas desta própria mudança). Ela achou cinco pontos fracos, e cada um virou mudança no motor ou regra na skill:
 
 | o que o registro mostrou | o que mudou |
 |---|---|
@@ -221,7 +224,7 @@ Quando o trabalho se parte em 2 frentes que não se tocam e passa de umas 8 tare
 
 <!-- uso-real:modo-god-texto:inicio -->
 
-No uso real, 34 dos 351 agentes rodaram assim, no segundo andar (operário aberto por um mestre), e custaram 0,9% do total; os 3 mestres somaram 1,1%.
+No uso real, 69 dos 586 agentes rodaram assim, no segundo andar (operário aberto por um mestre), e custaram 3,8% do total; os 9 mestres somaram 1,8%.
 
 <!-- uso-real:modo-god-texto:fim -->
 
@@ -336,24 +339,26 @@ python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|confe
 python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
-O Claude Code informa a pasta da skill quando ela carrega, e quem roda esses comandos no dia a dia é o próprio chefe. Para ter ideia do que sai, isto é um trecho da ficha real em 17/11/2026 (lições encurtadas):
+O Claude Code informa a pasta da skill quando ela carrega, e quem roda esses comandos no dia a dia é o próprio chefe. Para ter ideia do que sai, isto é um trecho da ficha real em 23/11/2026 (lições encurtadas):
 
 ```text
+tamanho: escrita que o operario fecha em menos de 30 respostas passa de primeira 66/79; com 30 ou mais, 23/47 -> um objetivo por tarefa; a que nao cabe vira duas
 leitura -> haiku brief 2 (rota padrao)
-  licao: conferir doc pelo curl do .md da pagina; o WebFetch resume
-  stats: haiku b1 1a 1/1 ok 1/1; b2 1a 19/19 ok 19/19 ~10k | sonnet b2 1a 8/9 ok 8/9 ~22k
+  licao: perguntas com letra e arquivo:linha; as amostras conferidas por grep bateram
+  stats: haiku b1 1a 1/1 ok 1/1; b2 1a 19/19 ok 19/19 ~11k | sonnet b2 1a 8/9 ok 8/9 ~22k
 edicao-logica -> sonnet brief 3 (rota padrao)
-  licao: dar no brief TODAS as ocorrencias do padrao (grep), nao so a do achado
-  stats: sonnet b2 1a 0/1 ok 1/1; b3 1a 10/16 ok 16/16 ~27k | opus b2 1a 0/5 ok 5/5 ~272k; b3 1a 2/3 ok 3/3
-teste -> sonnet brief 3 (rota padrao)
-  experimento: haiku brief 3 (sem prova com brief 3 (n=2); feitos 2 de 4)
-  stats: haiku b3 1a 1/2 ok 2/2 ~61k | sonnet b3 1a 1/1 ok 1/1 ~8k | opus b2 1a 0/1 ok 1/1 ~215k
+  no tipo: 8 de 11 entregas com erro foram de estado, somando os modelos -> no brief: a ordem dos eventos e o que acontece ao repetir, cancelar, recarregar
+  faltou no brief: desenhar o caso do lote fechado com valor diferente; a prova tem que cair sem cada ramo
+  experimento: haiku brief 3 (sonnet acerta 19/20 de primeira (todos os briefs): testar haiku na tarefa mais mecanica do tipo; feitos 0 de 4)
+  stats: sonnet b3 1a 19/20 ok 20/20 ~13k | opus b2 1a 0/5 ok 5/5 ~272k; b3 1a 6/8 ok 8/8 ~185k
+revisao -> sonnet brief 2 (rota padrao)
+  stats: sonnet b2 1a 20/20 ok 20/20 ~9k achados 8 confirmados 8 em 1 revisoes | opus b2 1a 20/20 ok 20/20 ~40k
 ```
 
-Como ler: `b2 1a 19/19` é "com brief nível 2, 19 de 19 passaram de primeira"; `ok` conta também as que fecharam depois de correção; `~10k` é a saída mediana em tokens. A ficha olha os últimos 20 registros de cada par, então erro que parou de acontecer sai sozinho. E a linha que fecha um trabalho, também real, do mesmo dia:
+Como ler: `b2 1a 19/19` é "com brief nível 2, 19 de 19 passaram de primeira"; `ok` conta também as que fecharam depois de correção; `~11k` é a saída mediana em tokens; `tamanho:` compara tarefa pequena e grande no seu registro; `no tipo:` é a classe de erro mais comum naquele tipo de tarefa, com o que reforçar no brief; `faltou no brief:` é o que o chefe deixou de escrever nas últimas vezes; `achados` e `confirmados` são o placar do revisor. A ficha olha os últimos 20 registros de cada par, então erro que parou de acontecer sai sozinho. E a linha que fecha um trabalho, também real, do mesmo dia (todas as sessões, 30 dias):
 
 ```text
-operarios: 144 tarefas, 118 de primeira, 24 corrigidas, 0 escaladas, 2 falharam | haiku 31/32 de primeira; sonnet 71/86 de primeira; opus 16/26 de primeira | saida: haiku 0,41M · sonnet 0,77M · opus 3,8M | haiku fez 32 de 144
+operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam, 4 anuladas | haiku 42/43 de primeira; sonnet 133/165 de primeira; opus 53/65 de primeira; fable 3/3 de primeira | saida: haiku 0,54M · sonnet 2,4M · opus 7,1M · fable 0,23M | haiku fez 43 de 276 | opus em execucao: 24 tarefas, 4,6M de saida, 12 de primeira | grandes: 47 de 126 de escrita, 23 de primeira
 ```
 
 ### Configuração (tudo opcional)

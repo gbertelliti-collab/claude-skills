@@ -158,6 +158,20 @@ Lessons the log kept from tasks that passed on the first check and that now go i
 | review | Ask for proof by execution. In one engine review, 15 findings and all 15 confirmed. |
 | coordination | Blueprint with the facts already measured and a numeric acceptance check: a whole workstream in 16 replies from the foreman. |
 
+### What nine days of use changed in the plugin
+
+On 2026-11-23 the log held 267 tasks across 12 projects. Analysing it turned up five weak spots, and each one became a change in the engine or a rule in the skill:
+
+| what the log showed | what changed |
+|---|---|
+| A writing task the worker closed in fewer than 30 replies before its first delivery passed the first check 62 times out of 79 (78%). With 30 or more, 20 out of 44 (45%). | Rule "one goal per task". The engine records the size up to the first delivery, the scorecard shows a `tamanho:` line with the numbers from your own log, and `registrar` warns when a large task needed a fix. |
+| Opus as an executor ran 24 tasks, passed 9 on the first check and produced 53% of all output. Those were large tasks with a less detailed brief. | Rule "smaller task and a more detailed brief before a bigger model". The closing line shows `opus em execucao: ...`. |
+| 18 of the 43 deliveries that did not pass the first check came back because the lead's brief was missing something, and the scorecard penalised the model anyway. | A round logged as a gap in the brief does not count against the model and shows up in the scorecard under `faltou no brief:`. |
+| 29 of 35 errors were logged without a class, so the scorecard produced almost no warnings. | `registrar` refuses an error without a class and lists the classes. The `reclassificar` command fixes old ones. |
+| Reviews logged as "first check" 68 times out of 68 say nothing about whether the reviewer found anything. | A review is logged with `--achados` (findings) and `--confirmados` (confirmed), and the scorecard shows the score per reviewer model. |
+
+Size is counted up to the first delivery because a fix adds replies to the same transcript and would make the task that failed look bigger. Brief length did not predict errors: longer briefs passed more often.
+
 > [!NOTE]
 > Read the numbers at the size they have: one user and a few days of use. "First check" means it passed the lead's first check, and the lead runs the acceptance check itself. Cost is tokens weighted by each model's API price, not an invoice. Your scorecard starts empty and will reach your own numbers.
 
@@ -318,7 +332,7 @@ Claude Code's `skillOverrides` setting does not apply to plugin skills, so it is
 ### The engine
 
 ```bash
-python <skill folder>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>
+python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>
 python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 

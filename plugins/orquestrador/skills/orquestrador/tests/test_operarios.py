@@ -94,7 +94,7 @@ class TestRegistrar(Base):
 
     def test_redacao(self):
         segredo = "ghp_" + "AbCdEf0123456789XyZw"
-        p = self.reg("busca", "haiku", "falhou", erros=["vazou token " + segredo],
+        p = self.reg("busca", "haiku", "falhou", erros=["outro: vazou token " + segredo],
                      licao="usar " + segredo)
         self.assertNotIn(segredo, p.stdout)
         conteudo = self.le(self.registro)
@@ -119,7 +119,7 @@ class TestRegistrar(Base):
         self.assertEqual(len(ids), 4)
 
     def test_d5_erro_duplicado_no_mesmo_registro(self):
-        self.reg("teste", "sonnet", "corrigido", rodadas=1, erros=["a", "a"])
+        self.reg("teste", "sonnet", "corrigido", rodadas=1, erros=["outro: a", "outro: a"])
         r = self.ficha_json("teste")
         self.assertEqual(r["avisos"], [])
 
@@ -787,10 +787,9 @@ class TestClasseErro(Base):
         self.assertEqual(d["erros"], ["fechou so a entrada"])
         p = self.run_op("registrar", "--tipo", "teste", "--modelo", "sonnet", "--resultado", "corrigido",
                         "--rodadas", "1", "--brief", "2", "--erro", "texto sem classe")
-        self.assertEqual(p.returncode, 0, p.stderr)
-        d = json.loads(p.stdout)
-        self.assertEqual(d["classes"], ["outro"])
-        self.assertEqual(d["erros"], ["texto sem classe"])
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("--erro sem classe", p.stderr)
+        self.assertEqual(len(self.le(self.registro).strip().splitlines()), 1)
 
     def test_t2_dois_da_mesma_classe_geram_aviso(self):
         self.reg("teste", "sonnet", "corrigido", rodadas=1, erros=["estado: fechou so a entrada"])
@@ -1563,6 +1562,543 @@ class TestHooksSh(Base):
         self.env["ORQ_SEM_AVISO_ATUALIZACAO"] = "1"
         p = self.hook("atualizacao.sh")
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""))
+
+
+class TestClasseObrigatoria(Base):
+    def regs_args(self, *erros):
+        a = ["registrar", "--tipo", "teste", "--modelo", "sonnet", "--resultado", "corrigido",
+             "--rodadas", "1", "--brief", "2"]
+        for e in erros:
+            a += ["--erro", e]
+        return a
+
+    def test_tabela_classe_do_erro(self):
+        casos = [
+            ("estado: fechou so a entrada", ("estado", "fechou so a entrada")),
+            ("Escopo-incompleto: moldura so no chefe", ("escopo", "moldura so no chefe")),
+            ("teste_fraco: a prova passava sem a mudanca",
+             ("teste", "a prova passava sem a mudanca")),
+            # frase comum que comeca com nome de classe NAO vira classe por acidente
+            ("teste de carga falhou: timeout", (None, "teste de carga falhou: timeout")),
+            ("Estado do banco: travado", (None, "Estado do banco: travado")),
+            ("segurança: log com dado pessoal", ("seguranca", "log com dado pessoal")),
+            ("alegação : disse feito", ("alegacao", "disse feito")),
+            ("outro: nao coube", ("outro", "nao coube")),
+            ("estado:", ("estado", "estado:")),
+            ("texto sem classe", (None, "texto sem classe")),
+            ("painel: montava texto a cada quadro", (None, "painel: montava texto a cada quadro")),
+        ]
+        for entrada, saida in casos:
+            self.assertEqual(operarios._classe_do_erro(entrada), saida, entrada)
+
+    def test_recusa_sem_gravar(self):
+        p = self.run_op(*self.regs_args("estado: ok", "sem classe aqui"))
+        self.assertEqual(p.returncode, 13)
+        self.assertIn('--erro sem classe: "sem classe aqui"', p.stderr)
+        self.assertIn("Nada foi gravado.", p.stderr)
+        self.assertFalse(os.path.exists(self.registro))
+
+    def test_aviso_ponto_e_virgula(self):
+        p = self.run_op(*self.regs_args("estado: a; b"))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stderr.count("parece juntar mais de um erro"), 1)
+
+    def test_listar(self):
+        p = self.run_op("reclassificar", "--listar")
+        self.assertEqual(p.returncode, 10)
+        self.assertIn("nenhum erro sem classe", p.stdout)
+        self.grava("teste", "sonnet", "corrigido", id="abc12345", erros=["x", "y"],
+                   classes=["estado", "outro"])
+        self.grava("teste", "sonnet", "corrigido", id="def67890", erros=["z"], classes=["estado"])
+        p = self.run_op("reclassificar", "--listar")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("abc12345", p.stdout)
+        self.assertIn("  [2] outro: y", p.stdout)
+        self.assertNotIn("def67890", p.stdout)
+
+    def test_id_certo(self):
+        self.grava("teste", "sonnet", "corrigido", id="aaaa1111", erros=["a"], classes=["estado"])
+        with io.open(self.registro, "a", encoding="utf-8", newline="") as f:
+            f.write("{quebrada\n")
+        self.grava("teste", "sonnet", "corrigido", id="abc12345", erros=["x", "y"],
+                   classes=["outro", "outro"])
+        self.grava("teste", "sonnet", "corrigido", id="bbbb2222", erros=["b"], classes=["borda"])
+        antes = self.le(self.registro)
+        p = self.run_op("reclassificar", "--id", "abc12345", "--classe", "escopo", "--classe", "borda")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("  [1] escopo: x", p.stdout)
+        self.assertIn("  [2] borda: y", p.stdout)
+        self.assertEqual(self.le(self.registro + ".antes-de-reclassificar"), antes)
+        la, lb = antes.splitlines(True), self.le(self.registro).splitlines(True)
+        self.assertEqual(len(la), len(lb))
+        for i, (x, y) in enumerate(zip(la, lb)):
+            if '"abc12345"' in x:
+                self.assertEqual(json.loads(y)["classes"], ["escopo", "borda"])
+            else:
+                self.assertEqual(x, y)
+        self.assertEqual(lb[1], "{quebrada\n")
+
+    def test_crlf_bom_e_fim_sem_quebra_ficam_como_estavam(self):
+        l1 = json.dumps({"ts": "2026-01-01T10:00:00-03:00", "id": "aaaa1111", "tipo": "teste",
+                         "modelo": "sonnet", "resultado": "corrigido", "rodadas": 1, "brief": 3,
+                         "erros": ["a"], "classes": ["outro"]})
+        l2 = json.dumps({"ts": "2026-01-01T10:00:00-03:00", "id": "bbbb2222", "tipo": "teste",
+                         "modelo": "sonnet", "resultado": "corrigido", "rodadas": 1, "brief": 3,
+                         "erros": ["b"], "classes": ["outro"]})
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        # BOM no comeco, CRLF nas linhas, lixo no meio e a ultima linha SEM quebra
+        with io.open(self.registro, "wb") as f:
+            f.write(b"\xef\xbb\xbf" + l1.encode("utf-8") + b"\r\n{quebrada\r\n" + l2.encode("utf-8"))
+        p = self.run_op("reclassificar", "--id", "bbbb2222", "--classe", "borda")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        with io.open(self.registro, "rb") as f:
+            depois = f.read()
+        partes = depois.split(b"\r\n")
+        self.assertEqual(len(partes), 3, depois)
+        self.assertEqual(partes[0], l1.encode("utf-8"))        # so o BOM sai
+        self.assertEqual(partes[1], b"{quebrada")
+        self.assertEqual(json.loads(partes[2].decode("utf-8"))["classes"], ["borda"])
+        self.assertFalse(depois.endswith(b"\n"), "ganhou quebra de linha no fim")
+        p = self.run_op("reclassificar", "--id", "aaaa1111", "--classe", "estado")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        with io.open(self.registro, "rb") as f:
+            self.assertEqual(f.read().count(b"\r\n"), 2)
+
+    def test_byte_invalido_nao_altera_nada(self):
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        bruto = b'{"id": "aaaa1111", "erros": ["a"]}\n\xff\xfe lixo\n'
+        with io.open(self.registro, "wb") as f:
+            f.write(bruto)
+        p = self.run_op("reclassificar", "--id", "aaaa1111", "--classe", "estado")
+        self.assertEqual(p.returncode, 13, p.stdout)
+        self.assertIn("Nada foi alterado", p.stderr)
+        self.assertNotIn("Traceback", p.stderr)
+        with io.open(self.registro, "rb") as f:
+            self.assertEqual(f.read(), bruto)
+
+    def test_quantidade_errada(self):
+        self.grava("teste", "sonnet", "corrigido", id="abc12345", erros=["x", "y"],
+                   classes=["outro", "outro"])
+        antes = self.le(self.registro)
+        p = self.run_op("reclassificar", "--id", "abc12345", "--classe", "escopo")
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("o registro tem 2 erro(s) e vieram 1 classe(s):", p.stderr)
+        self.assertEqual(self.le(self.registro), antes)
+
+    def test_id_inexistente_e_sem_classe(self):
+        self.grava("teste", "sonnet", "corrigido", id="abc12345", erros=["x"])
+        p = self.run_op("reclassificar", "--id", "nao", "--classe", "escopo")
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("id nao encontrado: nao", p.stderr)
+        p = self.run_op("reclassificar", "--id", "abc12345")
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("--id exige ao menos um --classe", p.stderr)
+
+    def test_registro_antigo_sem_classes(self):
+        self.grava("teste", "sonnet", "corrigido", id="abc12345", erros=["x"])
+        p = self.run_op("reclassificar", "--id", "abc12345", "--classe", "teste")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(self.le(self.registro).splitlines()[0])["classes"], ["teste"])
+
+
+class TestPrimeiraEntrega(Base):
+    DESC = "[sonnet:edicao-mecanica] tarefa de teste"
+
+    def agente(self, eventos, nome="pe1", desc=None, modelo="claude-sonnet-5-5"):
+        """eventos: ("u", texto|lista) | ("t",) tool_result | ("a", id) resposta | ("a",) sem id."""
+        sub = os.path.join(self.projects, "proj", "sess1", "subagents")
+        os.makedirs(operarios._long(sub), exist_ok=True)
+        mp = os.path.join(sub, "agent-%s.meta.json" % nome)
+        with io.open(operarios._long(mp), "w", encoding="utf-8") as f:
+            json.dump({"description": desc or self.DESC, "model": "sonnet"}, f)
+        with io.open(operarios._long(os.path.join(sub, "agent-%s.jsonl" % nome)), "w",
+                     encoding="utf-8") as f:
+            for e in eventos:
+                if e[0] == "u":
+                    d = {"type": "user", "message": {"role": "user", "content": e[1]}}
+                elif e[0] == "t":
+                    d = {"type": "user", "message": {"role": "user", "content": [
+                        {"type": "tool_result", "tool_use_id": "x", "content": "ok"}]}}
+                else:
+                    m = {"model": modelo, "usage": {"output_tokens": 10, "input_tokens": 5}}
+                    if len(e) > 1:
+                        m["id"] = e[1]
+                    d = {"type": "assistant", "message": m}
+                f.write(json.dumps(d) + "\n")
+        return mp
+
+    def an(self, eventos):
+        i = operarios.analisar_agente(self.agente(eventos))
+        return i["respostas"], i["respostas_1a"]
+
+    def test_tabela_analisar_agente(self):
+        B = ("u", "brief")
+        A = lambda n: [("a",)] * n  # noqa: E731
+        self.assertEqual(self.an([B] + A(3)), (3, 3))
+        self.assertEqual(self.an([B] + A(2) + [("t",)] + A(1)), (3, 3))
+        self.assertEqual(self.an([B] + A(2) + [("u", "corrija X")] + A(2)), (4, 2))
+        self.assertEqual(self.an([B, ("u", "<system-reminder> Your final report...")] + A(3)), (3, 3))
+        self.assertEqual(self.an(
+            [B] + A(2) + [("u", [{"type": "text", "text": "The coordinator sent a message while "
+                                                          "you were working: x"}])]
+            + A(1) + [("u", "outra")] + A(1)), (4, 2))
+        self.assertEqual(self.an([B, ("a", "m1"), ("a", "m1"), ("u", "corrija"), ("a", "m2")]), (2, 1))
+        i = operarios.analisar_agente(os.path.join(self.tmp, "nada.meta.json"))
+        self.assertEqual((i["respostas"], i["respostas_1a"]), (0, 0))
+
+    def test_prefixos_harness_e_tool_result_misto(self):
+        B = ("u", "brief")
+        for pref in ("[handback-send-enforce] x", "[Image: a.png]", "This session is being continued x"):
+            self.assertEqual(self.an([B, ("a",), ("u", pref), ("a",)]), (2, 2), pref)
+        misto = ("u", [{"type": "text", "text": "x"}, {"type": "tool_result", "content": "y"}])
+        self.assertEqual(self.an([B, ("a",), misto, ("a",)]), (2, 2))
+        self.assertEqual(self.an([B, ("a",), ("u", ""), ("a",)]), (2, 2))
+
+    def registra(self, eventos, resultado, rodadas, *extra, desc=None, nome="pe1"):
+        self.agente(eventos, nome=nome, desc=desc)
+        return self.run_op("registrar", "--agente", desc or self.DESC, "--resultado", resultado,
+                           "--rodadas", str(rodadas), "--brief", "2", *extra)
+
+    def ultimo(self):
+        with io.open(self.registro, encoding="utf-8") as f:
+            return json.loads(f.read().strip().splitlines()[-1])
+
+    def test_registrar_respostas_1a_tres_ramos(self):
+        B = ("u", "brief")
+        p = self.registra([B] + [("a",)] * 4, "de_primeira", 0)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.ultimo()["respostas_1a"], 4)
+        p = self.registra([B] + [("a",)] * 4 + [("u", "corrija")] + [("a",)] * 2, "corrigido", 1,
+                          "--licao", "x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        r = self.ultimo()
+        self.assertEqual((r["respostas"], r["respostas_1a"]), (6, 4))
+        p = self.registra([B] + [("a",)] * 4, "corrigido", 1, "--licao", "x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        r = self.ultimo()
+        self.assertEqual(r["respostas"], 4)
+        self.assertNotIn("respostas_1a", r)
+
+    def rev(self, *extra, tipo="revisao"):
+        return self.run_op("registrar", "--tipo", tipo, "--modelo", "sonnet", "--resultado",
+                           "de_primeira", "--rodadas", "0", "--brief", "2", *extra)
+
+    def test_placar_revisao(self):
+        casos = [
+            (("--achados", "3"), "debug", "so valem para revisao"),
+            (("--confirmados", "1", "--achados", "3"), "texto", "so valem para revisao"),
+            (("--achados", "-1"), "revisao", "nao podem ser negativos"),
+            (("--achados", "3", "--confirmados", "-2"), "revisao", "nao podem ser negativos"),
+            (("--confirmados", "1"), "revisao", "--confirmados exige --achados"),
+            (("--achados", "2", "--confirmados", "3"), "revisao", "nao pode passar de --achados"),
+        ]
+        for extra, tipo, msg in casos:
+            p = self.rev(*extra, tipo=tipo)
+            self.assertEqual(p.returncode, 13, (extra, p.stderr))
+            self.assertIn("erro: ", p.stderr)
+            self.assertIn(msg, p.stderr)
+            self.assertFalse(os.path.exists(self.registro), extra)
+        p = self.rev("--achados", "5", "--confirmados", "2")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        r = self.ultimo()
+        self.assertEqual((r["achados"], r["confirmados"]), (5, 2))
+        p = self.rev("--achados", "4")
+        r = self.ultimo()
+        self.assertEqual(r["achados"], 4)
+        self.assertNotIn("confirmados", r)
+
+    def test_placar_tipo_vem_do_agente(self):
+        p = self.registra([("u", "b"), ("a",)], "de_primeira", 0, "--achados", "1")
+        self.assertEqual(p.returncode, 13)
+        self.assertIn("so valem para revisao", p.stderr)
+        p = self.registra([("u", "b"), ("a",)], "de_primeira", 0, "--achados", "1",
+                          desc="[sonnet:revisao] rever", nome="pe2")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.ultimo()["achados"], 1)
+
+    def grande(self, resultado, rodadas, *extra, desc=None):
+        ev = [("u", "b")] + [("a",)] * 31
+        if rodadas:
+            ev += [("u", "corrija")] + [("a",)] * 2
+        return self.registra(ev, resultado, rodadas, *extra, desc=desc)
+
+    def test_aviso_a_tarefa_grande(self):
+        for res in ("corrigido", "escalado", "falhou"):
+            p = self.grande(res, 1, "--licao", "x")
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertIn("AVISO: tarefa grande (31 respostas ate a 1a entrega; a partir de 30", p.stderr)
+            self.assertIn("Na proxima: um objetivo por tarefa.", p.stderr)
+        p = self.grande("de_primeira", 0)
+        self.assertNotIn("tarefa grande", p.stderr)
+        p = self.grande("corrigido", 1, "--licao", "x", desc="[sonnet:leitura] ler")
+        self.assertNotIn("tarefa grande", p.stderr)
+        # abaixo do limite
+        p = self.registra([("u", "b")] + [("a",)] * 29 + [("u", "c")] + [("a",)], "corrigido", 1,
+                          "--licao", "x")
+        self.assertNotIn("tarefa grande", p.stderr)
+
+    def test_aviso_b_tarefa_pequena(self):
+        ev = [("u", "b")] + [("a",)] * 5
+        p = self.registra(ev, "de_primeira", 0)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("AVISO: tarefa pequena (5 respostas) de primeira em sonnet: a proxima parecida "
+                      "de edicao-mecanica vale o experimento em haiku brief 3 (feitos 0 de 4), "
+                      "registrando com --experimento.", p.stderr)
+        # com --experimento
+        p = self.registra(ev, "de_primeira", 0, "--experimento")
+        self.assertNotIn("tarefa pequena", p.stderr)
+        # 20 respostas
+        p = self.registra([("u", "b")] + [("a",)] * 20, "de_primeira", 0)
+        self.assertNotIn("tarefa pequena", p.stderr)
+        # ficha sem experimento pro tipo (debug nao tem modelo barato)
+        p = self.registra(ev, "de_primeira", 0, desc="[sonnet:debug] achar bug")
+        self.assertNotIn("tarefa pequena", p.stderr)
+        # tipo que nao e de escrita
+        p = self.registra(ev, "de_primeira", 0, desc="[sonnet:leitura] ler")
+        self.assertNotIn("tarefa pequena", p.stderr)
+        # sem --agente nao ha respostas_1a
+        p = self.run_op("registrar", "--tipo", "edicao-mecanica", "--modelo", "sonnet",
+                        "--resultado", "de_primeira", "--rodadas", "0", "--brief", "2")
+        self.assertNotIn("tarefa pequena", p.stderr)
+
+    def test_aviso_c_sem_erro_e_sem_licao(self):
+        for res in ("corrigido", "escalado", "falhou"):
+            p = self.reg_sem("edicao-mecanica", res)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertIn("AVISO: %s sem --erro e sem --licao: a ficha nao aprende com esta linha."
+                          % res, p.stderr)
+            self.assertIn('--erro "classe: detalhe"; faltou no brief = --licao.', p.stderr)
+        p = self.reg_sem("edicao-mecanica", "corrigido", "--licao", "faltou X")
+        self.assertNotIn("sem --erro e sem --licao", p.stderr)
+        p = self.reg_sem("edicao-mecanica", "corrigido", "--erro", "outro: y")
+        self.assertNotIn("sem --erro e sem --licao", p.stderr)
+        p = self.reg_sem("edicao-mecanica", "de_primeira")
+        self.assertNotIn("sem --erro e sem --licao", p.stderr)
+
+    def reg_sem(self, tipo, res, *extra):
+        rod = "0" if res == "de_primeira" else "1"
+        return self.run_op("registrar", "--tipo", tipo, "--modelo", "sonnet", "--resultado", res,
+                           "--rodadas", rod, "--brief", "2", *extra)
+
+    def test_aviso_nao_muda_stdout(self):
+        p = self.reg_sem("edicao-mecanica", "corrigido")
+        self.assertEqual(len(p.stdout.strip().splitlines()), 1)
+        json.loads(p.stdout)
+
+
+class TestFichaUsoReal(Base):
+    T = "edicao-logica"
+
+    def limpa(self):
+        if os.path.exists(self.registro):
+            os.remove(self.registro)
+
+    def rota(self, tipo=None):
+        return self.ficha_json(tipo or self.T)
+
+    # ---- passo 2 (A)
+    def test_a_so_falta_de_brief_nao_pune(self):
+        self.grava(self.T, "sonnet", "de_primeira", brief=3)
+        self.grava(self.T, "sonnet", "corrigido", n=3, brief=3, erros=[], licao="faltou o grep")
+        self.grava(self.T, "sonnet", "falhou", brief=3, erros=["x"])
+        r = self.rota()
+        self.assertEqual((r["modelo"], r["brief"], r["effort"]), ("sonnet", 3, None))
+        self.assertEqual(r["stats"]["sonnet"]["do_brief"], 3)
+
+    def test_a_falha_de_verdade_nao_e_diluida_pelo_brief(self):
+        # 2 de primeira + 2 escalado: metade das entregas julgaveis falhou. As 4 rodadas do brief
+        # nao podem esconder isso (sem elas o balde seria "nao da": ok 2/4 < 60%).
+        self.grava(self.T, "sonnet", "de_primeira", n=2, brief=3)
+        self.grava(self.T, "sonnet", "escalado", n=2, brief=3, erros=["x"])
+        self.grava(self.T, "sonnet", "corrigido", n=4, brief=3, erros=[], licao="faltou o grep")
+        com = self.rota()
+        self.limpa()
+        self.grava(self.T, "sonnet", "de_primeira", n=2, brief=3)
+        self.grava(self.T, "sonnet", "escalado", n=2, brief=3, erros=["x"])
+        sem = self.rota()
+        self.assertEqual((com["modelo"], com["brief"], com["effort"]),
+                         (sem["modelo"], sem["brief"], sem["effort"]))
+        self.assertNotEqual(com["modelo"], "sonnet", com["motivo"])
+
+    def test_a_tres_falhas_seguidas_continuam_duras_com_brief_no_meio(self):
+        self.grava(self.T, "sonnet", "falhou", n=2, brief=3, erros=["x"])
+        self.grava(self.T, "sonnet", "corrigido", n=1, brief=3, erros=[], licao="faltou o grep")
+        self.grava(self.T, "sonnet", "falhou", n=1, brief=3, erros=["x"])
+        self.assertNotEqual(self.rota()["modelo"], "sonnet")
+
+    def test_f_classe_mais_comum_no_tipo_soma_os_modelos(self):
+        # 2 em opus + 1 em sonnet: nenhum par tem 2 da mesma classe na rota, mas o TIPO tem 3
+        self.grava(self.T, "opus", "corrigido", n=2, brief=3, erros=["a"], classes=["estado"])
+        self.grava(self.T, "sonnet", "corrigido", n=1, brief=3, erros=["b"], classes=["estado"])
+        self.grava(self.T, "sonnet", "corrigido", n=1, brief=3, erros=["c"], classes=["outro"])
+        av = self.rota()["avisos"]
+        self.assertEqual([a for a in av if a.startswith("no tipo:")],
+                         ["no tipo: 3 de 4 entregas com erro foram de estado, somando os modelos -> no brief: "
+                          "a ordem dos eventos e o que acontece ao repetir, cancelar, recarregar"])
+
+    def test_f_classe_do_tipo_precisa_de_tres_e_nao_repete_o_aviso_do_par(self):
+        self.grava(self.T, "opus", "corrigido", n=2, brief=3, erros=["a"], classes=["estado"])
+        self.assertFalse(any(a.startswith("no tipo:") for a in self.rota()["avisos"]))
+        self.limpa()
+        self.grava(self.T, "sonnet", "corrigido", n=3, brief=3, erros=["a"], classes=["estado"])
+        av = self.rota()["avisos"]
+        self.assertTrue(any(a.startswith("cuidado: 3 de 3 entregas com erro foram de estado") for a in av), av)
+        self.assertFalse(any(a.startswith("no tipo:") for a in av), av)
+
+    def test_a_corrigido_com_erro_pune(self):
+        self.grava(self.T, "sonnet", "de_primeira", brief=3)
+        self.grava(self.T, "sonnet", "corrigido", n=4, brief=3, erros=["x"], licao="l")
+        r = self.rota()
+        self.assertEqual((r["modelo"], r["effort"]), ("sonnet", "high"))
+        self.assertIn("de primeira 1/5", r["motivo"])
+
+    def test_a_corrigido_sem_erro_sem_licao_pune(self):
+        self.grava(self.T, "sonnet", "de_primeira", brief=3)
+        self.grava(self.T, "sonnet", "corrigido", n=4, brief=3, erros=[], licao="")
+        r = self.rota()
+        self.assertEqual(r["effort"], "high")
+        self.assertEqual(r["stats"]["sonnet"]["do_brief"], 0)
+
+    def test_a_mistura_vira_bom(self):
+        self.grava(self.T, "sonnet", "de_primeira", n=2, brief=3)
+        self.grava(self.T, "sonnet", "corrigido", n=2, brief=3, erros=["x"])
+        self.grava(self.T, "sonnet", "corrigido", n=3, brief=3, erros=[], licao="faltou")
+        r = self.rota()
+        self.assertEqual((r["modelo"], r["brief"], r["effort"]), ("sonnet", 3, None))
+        self.assertEqual(r["motivo"], "rota padrao")
+
+    def test_a_quatro_falhou_nao_da(self):
+        self.grava(self.T, "sonnet", "falhou", n=4, brief=3, erros=["x"])
+        r = self.rota()
+        self.assertNotEqual(r["modelo"], "sonnet")
+
+    # ---- passo 3 (B)
+    def test_b_faltou_no_brief_e_licao_separada(self):
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="Faltou A")
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="faltou a")
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="faltou B")
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="faltou C")
+        self.grava(self.T, "sonnet", "de_primeira", brief=3, licao="boa pratica")
+        r = self.rota()
+        self.assertEqual(r["faltou"], ["faltou C", "faltou B"])
+        self.assertEqual(r["do_brief"], [4, 5])
+        self.assertEqual(r["licoes"], ["boa pratica"])
+        p = self.run_op("ficha", "--tipo", self.T)
+        self.assertIn("  brief: 4 das ultimas 5 entregas voltaram por falta no brief "
+                      "(nao conta contra o modelo)", p.stdout)
+        self.assertIn("  faltou no brief: faltou C", p.stdout)
+        self.assertIn("  licao: boa pratica", p.stdout)
+        self.assertNotIn("licao: faltou", p.stdout)
+
+    def test_b_uma_so_nao_mostra_linha_brief(self):
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="faltou A")
+        p = self.run_op("ficha", "--tipo", self.T)
+        self.assertNotIn("  brief:", p.stdout)
+        self.assertIn("faltou no brief: faltou A", p.stdout)
+
+    def test_b_secao_na_nota(self):
+        self.grava("busca", "haiku", "de_primeira", licao="grep")
+        self.assertEqual(self.run_op("atualizar").returncode, 0)
+        t = self.le(self.ficha)
+        self.assertNotIn("## O que faltou no brief", t)
+        self.grava(self.T, "sonnet", "corrigido", brief=3, erros=[], licao="faltou o contrato")
+        self.assertEqual(self.run_op("atualizar").returncode, 0)
+        t = self.le(self.ficha)
+        i = t.find("## O que faltou no brief")
+        self.assertTrue(t.find("## O que funciona") < i < t.find("## Exemplos de brief"))
+        self.assertIn("### edicao-logica (sonnet)\n- faltou o contrato", t)
+
+    # ---- passo 4 (C)
+    def _regs(self, tipo, resultado, resp, n):
+        return [{"tipo": tipo, "resultado": resultado, "respostas_1a": resp} for _ in range(n)]
+
+    def test_c_tabela(self):
+        f = operarios.tamanho_geral
+        regs = (self._regs(self.T, "de_primeira", 10, 7) + self._regs(self.T, "corrigido", 10, 1)
+                + self._regs(self.T, "de_primeira", 40, 3) + self._regs(self.T, "corrigido", 40, 5))
+        t = f(regs)
+        self.assertEqual(t, {"corte": 30, "peq": [7, 8], "gra": [3, 8]})
+        self.assertIn("menos de 30 respostas passa de primeira 7/8; com 30 ou mais, 3/8",
+                      operarios.texto_tamanho(t))
+        self.assertIsNone(f(self._regs(self.T, "corrigido", 10, 8) + self._regs(self.T, "corrigido", 40, 7)))
+        regs = (self._regs(self.T, "de_primeira", 10, 6) + self._regs(self.T, "corrigido", 10, 2)
+                + self._regs(self.T, "de_primeira", 40, 5) + self._regs(self.T, "corrigido", 40, 3))
+        self.assertIsNone(f(regs))
+
+    def test_c_registros_que_nao_entram(self):
+        f = operarios.tamanho_geral
+        regs = (self._regs(self.T, "de_primeira", 10, 8) + self._regs(self.T, "corrigido", 40, 8))
+        self.assertIsNotNone(f(regs))
+        ruido = (self._regs(self.T, "corrigido", None, 20) + self._regs(self.T, "corrigido", True, 20)
+                 + self._regs("leitura", "corrigido", 40, 20) + self._regs(self.T, "anulado", 40, 20))
+        for r in ruido:
+            if r["respostas_1a"] is None:
+                del r["respostas_1a"]
+        self.assertEqual(f(regs + ruido), f(regs))
+        self.assertIsNone(f(ruido))
+
+    def test_c_ficha_texto_json_e_nota(self):
+        self.grava(self.T, "sonnet", "de_primeira", n=7, respostas_1a=10)
+        self.grava(self.T, "sonnet", "corrigido", n=1, respostas_1a=10, erros=["x"])
+        self.grava(self.T, "sonnet", "de_primeira", n=3, respostas_1a=40)
+        self.grava(self.T, "sonnet", "corrigido", n=5, respostas_1a=40, erros=["x"])
+        p = self.run_op("ficha")
+        self.assertTrue(p.stdout.startswith("tamanho: escrita que o operario fecha em menos de 30"))
+        p = self.run_op("ficha", "--tipo", self.T)
+        self.assertTrue(p.stdout.startswith("tamanho:"))
+        p = self.run_op("ficha", "--tipo", "busca")
+        self.assertNotIn("tamanho:", p.stdout)
+        p = self.run_op("ficha", "--json")
+        self.assertIsInstance(json.loads(p.stdout), list)
+        self.run_op("atualizar")
+        t = self.le(self.ficha)
+        self.assertRegex(t, r"registros\.\n\ntamanho: .*\n\n\| tipo")
+
+    # ---- passo 5 (D)
+    def test_d_placar(self):
+        self.grava("revisao", "sonnet", "de_primeira", n=3, achados=3, confirmados=2)
+        self.grava("revisao", "sonnet", "de_primeira", achados=True, confirmados=True)
+        self.grava("revisao", "sonnet", "de_primeira", achados=5)
+        r = self.rota("revisao")
+        self.assertEqual(r["stats"]["sonnet"]["placar"], [3, 9, 6])
+        p = self.run_op("ficha", "--tipo", "revisao")
+        self.assertIn("achados 9 confirmados 6 em 3 revisoes", p.stdout)
+
+    def test_d_sem_placar(self):
+        self.grava("revisao", "sonnet", "de_primeira", n=2)
+        r = self.rota("revisao")
+        self.assertEqual(r["stats"]["sonnet"]["placar"][0], 0)
+        p = self.run_op("ficha", "--tipo", "revisao")
+        self.assertNotIn("achados", p.stdout)
+
+    # ---- passo 6 (E)
+    def test_e_resumo_partes(self):
+        self.grava("busca", "haiku", "de_primeira")
+        p = self.run_op("resumo", "--todas")
+        self.assertNotIn("em execucao", p.stdout)
+        self.assertNotIn("grandes:", p.stdout)
+        self.limpa()
+        self.grava(self.T, "opus", "de_primeira", tokens_saida=1500000, tokens_v=2)
+        self.grava(self.T, "opus", "corrigido", erros=["x"])
+        self.grava("texto", "fable", "de_primeira")
+        self.grava("revisao", "opus", "de_primeira")
+        self.grava(self.T, "opus", "anulado")
+        p = self.run_op("resumo", "--todas")
+        self.assertIn("haiku fez 0 de 4 | opus+fable em execucao: 3 tarefas, 1,5M de saida, 2 de primeira",
+                      p.stdout)
+        self.limpa()
+        self.grava(self.T, "opus", "de_primeira")
+        p = self.run_op("resumo", "--todas")
+        self.assertIn("opus em execucao: 1 tarefas, - de saida, 1 de primeira", p.stdout)
+
+    def test_e_resumo_grandes(self):
+        self.grava(self.T, "sonnet", "de_primeira", n=2, respostas_1a=40)
+        self.grava(self.T, "sonnet", "corrigido", respostas_1a=30)
+        self.grava(self.T, "sonnet", "de_primeira", n=3, respostas_1a=5)
+        self.grava(self.T, "sonnet", "de_primeira", respostas_1a=True)
+        self.grava("busca", "haiku", "de_primeira", respostas_1a=99)
+        p = self.run_op("resumo", "--todas")
+        self.assertIn("grandes: 3 de 6 de escrita, 2 de primeira", p.stdout)
 
 
 if __name__ == "__main__":

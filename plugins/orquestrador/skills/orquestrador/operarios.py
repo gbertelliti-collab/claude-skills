@@ -23,6 +23,7 @@ import statistics
 import sys
 import tempfile
 import time
+import unicodedata
 from datetime import datetime, timedelta
 
 # ----------------------------------------------------------------------------
@@ -90,6 +91,14 @@ JANELA_GERAL = 60
 TIPOS_EXPERIMENTO = {"busca", "leitura", "pesquisa-web", "edicao-mecanica", "teste"}
 TIPOS_EXP_FORTE = {"front", "edicao-logica", "texto", "outro"}
 TIPOS_SEM_BARATO = {"revisao", "debug", "dados-sql", "coordenacao"}
+TIPOS_ESCRITA = [t for t in TIPOS if t not in ("busca", "leitura", "pesquisa-web", "revisao", "coordenacao")]
+GRANDE_RESPOSTAS = 30   # respostas ate a 1a entrega a partir das quais a tarefa de escrita e "grande"
+PEQUENA_RESPOSTAS = 15  # abaixo disso a tarefa e candidata ao experimento no modelo mais barato
+TAMANHO_MIN_N = 8
+CLASSE_TIPO_MIN = 3     # entregas com erro da mesma classe, no tipo, pra virar aviso
+TAMANHO_DIF = 0.15
+JANELA_TAMANHO = 200
+_PREFIXOS_HARNESS = ("<system-reminder>", "[handback-send-enforce]", "[Image:", "This session is being continued")
 EXP_FORTE_N = 6
 EXP_FORTE_TAXA = 0.75
 EXP_META = 4
@@ -330,6 +339,31 @@ def _int0(v):
         return 0
 
 
+def _eh_mensagem_nova(d):
+    """linha "user" que e mensagem nova pro agente (brief ou correcao), nao resultado de ferramenta."""
+    msg = d.get("message")
+    c = msg.get("content") if isinstance(msg, dict) else None
+    if isinstance(c, str):
+        texto = c.strip()
+    elif isinstance(c, list):
+        partes = []
+        for b in c:
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "tool_result":
+                return False
+            if b.get("type") == "text" and isinstance(b.get("text"), str):
+                partes.append(b["text"])
+        if not any(isinstance(b, dict) and b.get("type") == "text" for b in c):
+            return False
+        texto = " ".join(partes).strip()
+    else:
+        return False
+    if not isinstance(c, list) and not texto:
+        return False
+    return not texto.startswith(_PREFIXOS_HARNESS)
+
+
 def analisar_agente(meta_path):
     try:
         meta = _ler_json(meta_path)
@@ -347,17 +381,28 @@ def analisar_agente(meta_path):
     # varias linhas "assistant" por resposta (1 por bloco, mesmo message.id e mesma usage):
     # agrupa por id e fica com a usage de maior output_tokens (empate: a primeira)
     resp = {}
+    novas = 0           # mensagens novas (brief + correcoes) vistas ate agora
+    chaves_1a = set()   # respostas vistas antes da 2a mensagem nova
     try:
         with io.open(jsonl, "r", encoding="utf-8", errors="replace") as f:
             for n, linha in enumerate(f):
                 linha = linha.strip()
-                if not linha or '"assistant"' not in linha:
+                if not linha:
+                    continue
+                eh_assist = '"assistant"' in linha
+                if not eh_assist and not ('"user"' in linha and '"tool_result"' not in linha):
                     continue
                 try:
                     d = json.loads(linha)
                 except ValueError:
                     continue
-                if not isinstance(d, dict) or d.get("type") != "assistant":
+                if not isinstance(d, dict):
+                    continue
+                if d.get("type") == "user":
+                    if _eh_mensagem_nova(d):
+                        novas += 1
+                    continue
+                if d.get("type") != "assistant":
                     continue
                 msg = d.get("message")
                 if not isinstance(msg, dict):
@@ -373,6 +418,8 @@ def analisar_agente(meta_path):
                      + _int0(u.get("cache_creation_input_tokens")))
                 mid = msg.get("id")
                 chave = mid if isinstance(mid, str) and mid else "__linha_%d" % n
+                if novas < 2:
+                    chaves_1a.add(chave)
                 atual = resp.get(chave)
                 if atual is None:
                     resp[chave] = {"o": o, "c": c, "mod": mod}
@@ -422,6 +469,7 @@ def analisar_agente(meta_path):
         "reais": reais,
         "tokens_saida": saida,
         "respostas": len(resp),
+        "respostas_1a": len(chaves_1a) if novas >= 2 else len(resp),
         "contexto_max": ctx,
         "status": status,
         "_jsonl": jsonl,
@@ -749,6 +797,97 @@ def _com_trava(caminho_trava, func):
         os.close(fd)
 
 
+def _classe_do_erro(e):
+    """Devolve (classe, detalhe) de um --erro "classe: detalhe", ou (None, e) sem classe."""
+    m = re.match(r"^\s*([^\W\d_]+)(?:[-_][^:\s]{0,30})?\s*:(.*)$", e, re.S)
+    if not m:
+        return None, e
+    tok = "".join(ch for ch in unicodedata.normalize("NFD", m.group(1).lower())
+                  if unicodedata.category(ch) != "Mn")
+    if tok in _NOMES_CLASSE:
+        return tok, m.group(2).strip() or e
+    return None, e
+
+
+def _bloco_reg(r, i_marca=None):
+    out = ["%s %s %s %s %s" % (r.get("id", "-"), (r.get("ts") or "")[:10], r["modelo"],
+                               r["tipo"], r.get("projeto") or "-")]
+    for i, (c, e) in enumerate(zip(r["classes"], r["erros"]), 1):
+        out.append("  [%d] %s: %s" % (i, c, e))
+    return out
+
+
+def cmd_reclassificar(args):
+    if args.listar:
+        achou = False
+        for r in ler_registro():
+            if "outro" in r["classes"]:
+                achou = True
+                print("\n".join(_bloco_reg(r)))
+        if not achou:
+            print("nenhum erro sem classe")
+            return 10
+        return 0
+    classes = args.classe or []
+    if not classes:
+        print("erro: --id exige ao menos um --classe", file=sys.stderr)
+        return 13
+    reg = p_registro()
+    if not os.path.exists(reg):
+        print("erro: id nao encontrado: %s" % args.id, file=sys.stderr)
+        return 13
+
+    def trabalho():
+        with io.open(reg, "r", encoding="utf-8-sig", newline="") as f:
+            linhas = f.read().splitlines(keepends=True)
+        alvo = None
+        for i, ln in enumerate(linhas):
+            try:
+                d = json.loads(ln)
+            except Exception:
+                continue
+            if isinstance(d, dict) and d.get("id") == args.id:
+                alvo = (i, d)
+                break
+        if alvo is None:
+            print("erro: id nao encontrado: %s" % args.id, file=sys.stderr)
+            return 13
+        i, d = alvo
+        er = d.get("erros")
+        if isinstance(er, str):
+            er = [er]
+        if not isinstance(er, list):
+            er = []
+        if len(er) != len(classes):
+            atuais = d.get("classes") if isinstance(d.get("classes"), list) else []
+            print("erro: o registro tem %d erro(s) e vieram %d classe(s):" % (len(er), len(classes)),
+                  file=sys.stderr)
+            for k, e in enumerate(er):
+                c = atuais[k] if k < len(atuais) and isinstance(atuais[k], str) else "outro"
+                print("  [%d] %s: %s" % (k + 1, c, e), file=sys.stderr)
+            return 13
+        ln = linhas[i]
+        fim = ln[len(ln.rstrip("\r\n")):]
+        d["classes"] = list(classes)
+        shutil.copyfile(reg, reg + ".antes-de-reclassificar")
+        linhas[i] = json.dumps(d, ensure_ascii=False) + fim
+        _gravar_atomico(reg, "".join(linhas))
+        nr = _norm_reg(d)
+        if nr is None:
+            nr = {"id": d.get("id"), "ts": d.get("ts") or "", "modelo": d.get("modelo"),
+                  "tipo": d.get("tipo"), "projeto": d.get("projeto"),
+                  "classes": list(classes), "erros": [str(x) for x in er]}
+        nr.setdefault("id", d.get("id"))
+        print("\n".join(_bloco_reg(nr)))
+        return 0
+
+    try:
+        return _com_trava(reg + ".trava", trabalho)
+    except (OSError, UnicodeError) as e:
+        print("erro: nao consegui reescrever o registro: %s. Nada foi alterado." % e, file=sys.stderr)
+        return 13
+
+
 def cmd_registrar(args):
     if args.brief < 1 or args.brief > 3:
         print("erro: --brief deve ser 1, 2 ou 3", file=sys.stderr)
@@ -762,6 +901,14 @@ def cmd_registrar(args):
     if args.resultado == "corrigido" and args.rodadas < 1:
         print("erro: corrigido exige --rodadas >= 1", file=sys.stderr)
         return 13
+    for e in (args.erro or []):
+        if _classe_do_erro(e)[0] is None:
+            print('erro: --erro sem classe: "%s"' % e[:60], file=sys.stderr)
+            print('use "classe: detalhe", um erro por --erro. Classes:', file=sys.stderr)
+            for c, v in CLASSES_ERRO.items():
+                print("  %s: %s" % (c, v[0]), file=sys.stderr)
+            print('"outro: detalhe" so quando nenhuma couber. Nada foi gravado.', file=sys.stderr)
+            return 13
 
     tipo, modelo = args.tipo, args.modelo
     info = None
@@ -786,6 +933,20 @@ def cmd_registrar(args):
     if modelo not in MODELOS:
         print("erro: nao consegui determinar o modelo (use --modelo)", file=sys.stderr)
         return 13
+    ach, conf = getattr(args, "achados", None), getattr(args, "confirmados", None)
+    if ach is not None or conf is not None:
+        if tipo != "revisao":
+            print("erro: --achados e --confirmados so valem para revisao", file=sys.stderr)
+            return 13
+        if (ach is not None and ach < 0) or (conf is not None and conf < 0):
+            print("erro: --achados e --confirmados nao podem ser negativos", file=sys.stderr)
+            return 13
+        if conf is not None and ach is None:
+            print("erro: --confirmados exige --achados", file=sys.stderr)
+            return 13
+        if conf is not None and conf > ach:
+            print("erro: --confirmados nao pode passar de --achados", file=sys.stderr)
+            return 13
 
     classes = []
 
@@ -807,14 +968,16 @@ def cmd_registrar(args):
     if args.effort:
         rec["effort"] = args.effort
     erros, classes_e = [], []
+    avisou_pv = False
     for e in (args.erro or []):
-        classe, det = "outro", e
-        mm = re.match(r"^\s*([A-Za-z]+)\s*:(.*)$", e, re.S)
-        if mm and mm.group(1).lower() in _NOMES_CLASSE:
-            classe = mm.group(1).lower()
-            det = mm.group(2).strip() or e
+        classe, det = _classe_do_erro(e)
+        if ";" in det:
+            avisou_pv = True
         erros.append(limpa(det, MAX_ERRO))
         classes_e.append(classe)
+    if avisou_pv:
+        print('AVISO: --erro com ";" parece juntar mais de um erro: registre um por --erro, '
+              'cada um com a sua classe', file=sys.stderr)
     if erros:
         rec["erros"] = erros
         rec["classes"] = classes_e
@@ -831,6 +994,10 @@ def cmd_registrar(args):
         rec["tarefa"] = limpa(tarefa, MAX_TAREFA)
     if args.experimento:
         rec["experimento"] = True
+    if ach is not None:
+        rec["achados"] = ach
+        if conf is not None:
+            rec["confirmados"] = conf
     if args.tokens is not None:
         rec["tokens"] = args.tokens
     if sessao_atual():
@@ -839,6 +1006,11 @@ def cmd_registrar(args):
         rec["agente"] = info["agente"]
         rec["tokens_saida"] = info["tokens_saida"]
         rec["respostas"] = info["respostas"]
+        r1 = info.get("respostas_1a")
+        if args.rodadas == 0:
+            rec["respostas_1a"] = info["respostas"]
+        elif isinstance(r1, int) and not isinstance(r1, bool) and r1 < info["respostas"]:
+            rec["respostas_1a"] = r1
         rec["tokens_v"] = TOKENS_V
         rec["contexto_max"] = info["contexto_max"]
         rec["profundidade"] = info["profundidade"]
@@ -885,8 +1057,43 @@ def cmd_registrar(args):
                     f.write(cab + "\n\n" + t + "\n")
         except OSError as e:
             print("AVISO: nao consegui salvar o exemplo: %s" % e, file=sys.stderr)
+    _avisos_registrar(rec, args)
     print(linha)
     return 0
+
+
+def _avisos_registrar(rec, args):
+    """3 avisos curtos em stderr depois de gravar; nunca derrubam o registrar."""
+    ruim = ("corrigido", "escalado", "falhou")
+    res, tipo, modelo = rec["resultado"], rec["tipo"], rec["modelo"]
+    r1 = rec.get("respostas_1a")
+    r1 = r1 if isinstance(r1, int) and not isinstance(r1, bool) else None
+    try:
+        if r1 is not None and r1 >= GRANDE_RESPOSTAS and tipo in TIPOS_ESCRITA and res in ruim:
+            print("AVISO: tarefa grande (%d respostas ate a 1a entrega; a partir de %d a escrita "
+                  "erra bem mais de primeira). Na proxima: um objetivo por tarefa."
+                  % (r1, GRANDE_RESPOSTAS), file=sys.stderr)
+    except Exception:
+        pass
+    try:
+        if (res == "de_primeira" and not args.experimento and tipo in TIPOS_ESCRITA
+                and modelo in ESCADA and r1 is not None and r1 < PEQUENA_RESPOSTAS):
+            rota = rota_tipo(ler_registro(), tipo)
+            exp = rota.get("experimento")
+            if exp and exp["modelo"] in ESCADA and ESCADA.index(exp["modelo"]) < ESCADA.index(modelo):
+                print("AVISO: tarefa pequena (%d respostas) de primeira em %s: a proxima parecida de %s "
+                      "vale o experimento em %s brief %d (feitos %d de %d), registrando com --experimento."
+                      % (r1, modelo, tipo, exp["modelo"], exp["brief"], exp["feitos"], exp["meta"]),
+                      file=sys.stderr)
+    except Exception:
+        pass
+    try:
+        if res in ruim and not args.erro and not args.licao:
+            print("AVISO: %s sem --erro e sem --licao: a ficha nao aprende com esta linha. "
+                  "Erro do operario = --erro \"classe: detalhe\"; faltou no brief = --licao." % res,
+                  file=sys.stderr)
+    except Exception:
+        pass
 
 
 # ----------------------------------------------------------------------------
@@ -917,6 +1124,12 @@ def _tok_saida(r):
     return t if isinstance(t, int) and not isinstance(t, bool) else None
 
 
+def _do_brief(r):
+    """rodada causada por brief incompleto: corrigido, sem erro do operario, com licao."""
+    return (r["resultado"] == "corrigido" and not any(e for e in r["erros"])
+            and bool(r["licao"].strip()))
+
+
 def _bstats(lista):
     n = len(lista)
     c = {k: 0 for k in RESULTADOS}
@@ -929,6 +1142,7 @@ def _bstats(lista):
     return {
         "tok_med": statistics.median(toks) if toks else None,
         "n": n,
+        "do_brief": len([r for r in lista if _do_brief(r)]),
         "de_primeira": c["de_primeira"],
         "corrigido": c["corrigido"],
         "escalado": c["escalado"],
@@ -944,9 +1158,12 @@ def _duro(b):
 
 
 def _classe(b):
-    if _duro(b):
+    # rodada que voltou por falta no brief nao julga o operario: o balde e avaliado sem ela,
+    # com as mesmas regras de sempre (falha de verdade continua pesando inteira)
+    j = [r for r in b if not _do_brief(r)]
+    if _duro(j):
         return "nao_da"
-    s = _bstats(b)
+    s = _bstats(j)
     if s["n"] >= MIN_N and s["pok"] < TAXA_OK_MIN:
         return "nao_da"
     if s["n"] < MIN_N:
@@ -976,10 +1193,10 @@ def _avaliar(regs, tipo, m, b0):
         if c == "precisa_ajuda":
             if L >= 3:
                 motivos.append("%s brief 3: de primeira %d/%d -> effort high" % (
-                    m, s["de_primeira"], s["n"]))
+                    m, s["de_primeira"], s["n"] - s["do_brief"]))
                 return True, 3, "high", motivos
             motivos.append("%s brief %d: de primeira %d/%d -> brief %d" % (
-                m, L, s["de_primeira"], s["n"], L + 1))
+                m, L, s["de_primeira"], s["n"] - s["do_brief"], L + 1))
             L += 1
         else:
             ok = s["de_primeira"] + s["corrigido"]
@@ -1037,10 +1254,62 @@ def avisos_par(regs, tipo, m):
     return out
 
 
+def faltou_par(regs, tipo, m):
+    """licoes distintas dos registros devolvidos por falta no brief (mais recente primeiro, max 2)."""
+    vistos = set()
+    out = []
+    for r in reversed(_pares(regs, tipo, m)):
+        if not _do_brief(r):
+            continue
+        l = r["licao"].strip()
+        if l.lower() in vistos:
+            continue
+        vistos.add(l.lower())
+        out.append(l)
+        if len(out) >= 2:
+            break
+    return out
+
+
+def classe_do_tipo(regs, tipo):
+    """Classe de erro mais comum no TIPO, somando todos os modelos: trocar o modelo da rota
+    nao apaga o que o tipo de tarefa ja ensinou. Devolve (classe, n, com_erro) ou None."""
+    rs = [r for r in regs if r["tipo"] == tipo and r["resultado"] != "anulado"][-JANELA_GERAL:]
+    com_erro = 0
+    cont = {}
+    for r in rs:
+        if not any(e for e in r["erros"]):
+            continue
+        com_erro += 1
+        for c in set(c for e, c in zip(r["erros"], r["classes"]) if e and c != "outro"):
+            cont[c] = cont.get(c, 0) + 1
+    if not cont:
+        return None
+    c, n = sorted(cont.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+    if n < CLASSE_TIPO_MIN:
+        return None
+    return c, n, com_erro
+
+
+def avisos_rota(regs, tipo, m):
+    """Avisos do par (tipo, modelo) mais, se couber, o da classe mais comum no tipo."""
+    out = avisos_par(regs, tipo, m)
+    ct = classe_do_tipo(regs, tipo)
+    if ct and len(out) < MAX_AVISOS and not any((" foram de %s " % ct[0]) in a for a in out):
+        msg = "no tipo: %d de %d entregas com erro foram de %s, somando os modelos" % (
+            ct[1], ct[2], ct[0])
+        if CLASSES_ERRO[ct[0]][1]:
+            msg += " -> no brief: " + CLASSES_ERRO[ct[0]][1]
+        out.append(msg)
+    return out
+
+
 def licoes_par(regs, tipo, m):
     grupos = {}
     for i, r in enumerate(_pares(regs, tipo, m)):
         if r["resultado"] not in ("de_primeira", "corrigido"):
+            continue
+        if _do_brief(r):
             continue
         l = r["licao"].strip()
         if not l:
@@ -1067,6 +1336,15 @@ def _stats_tipo(regs, tipo):
             if b:
                 niveis[str(L)] = _bstats(b)
         s["niveis"] = niveis
+        n_rev = ach = conf = 0
+        for r in par:
+            a, c = r.get("achados"), r.get("confirmados")
+            if (isinstance(a, int) and not isinstance(a, bool)
+                    and isinstance(c, int) and not isinstance(c, bool)):
+                n_rev += 1
+                ach += a
+                conf += c
+        s["placar"] = [n_rev, ach, conf]
         out[m] = s
     return out
 
@@ -1165,8 +1443,11 @@ def rota_tipo(regs, tipo, agora=None):
         "effort": effort,
         "motivo": "; ".join(motivos),
         "experimento": experimento,
-        "avisos": avisos_par(regs, tipo, modelo),
+        "avisos": avisos_rota(regs, tipo, modelo),
         "licoes": licoes_par(regs, tipo, modelo),
+        "faltou": faltou_par(regs, tipo, modelo),
+        "do_brief": [len([r for r in _pares(regs, tipo, modelo) if _do_brief(r)]),
+                     len(_pares(regs, tipo, modelo))],
         "exemplo": ex if os.path.exists(ex) else None,
         "stats": _stats_tipo(regs, tipo),
     }
@@ -1186,8 +1467,38 @@ def _fmt_stats(stats):
             if b.get("tok_med") is not None:
                 t += " ~%dk" % int(round(b["tok_med"] / 1000.0))
             niv.append(t)
-        partes.append("%s %s" % (m, "; ".join(niv)))
+        t = "%s %s" % (m, "; ".join(niv))
+        pl = s.get("placar")
+        if pl and pl[0] > 0:
+            t += " achados %d confirmados %d em %d revisoes" % (pl[1], pl[2], pl[0])
+        partes.append(t)
     return " | ".join(partes)
+
+
+def tamanho_geral(regs):
+    """de_primeira da escrita pequena x grande, pelas respostas ate a 1a entrega."""
+    lista = []
+    for r in regs:
+        v = r.get("respostas_1a")
+        if (r["tipo"] in TIPOS_ESCRITA and r["resultado"] != "anulado"
+                and isinstance(v, int) and not isinstance(v, bool)):
+            lista.append(r)
+    lista = lista[-JANELA_TAMANHO:]
+    peq = [r for r in lista if r["respostas_1a"] < GRANDE_RESPOSTAS]
+    gra = [r for r in lista if r["respostas_1a"] >= GRANDE_RESPOSTAS]
+    if len(peq) < TAMANHO_MIN_N or len(gra) < TAMANHO_MIN_N:
+        return None
+    dp = len([r for r in peq if r["resultado"] == "de_primeira"])
+    dg = len([r for r in gra if r["resultado"] == "de_primeira"])
+    if dp / float(len(peq)) - dg / float(len(gra)) >= TAMANHO_DIF - 1e-9:
+        return {"corte": GRANDE_RESPOSTAS, "peq": [dp, len(peq)], "gra": [dg, len(gra)]}
+    return None
+
+
+def texto_tamanho(t):
+    return ("tamanho: escrita que o operario fecha em menos de %d respostas passa de primeira "
+            "%d/%d; com %d ou mais, %d/%d -> um objetivo por tarefa; a que nao cabe vira duas" % (
+                t["corte"], t["peq"][0], t["peq"][1], t["corte"], t["gra"][0], t["gra"][1]))
 
 
 def texto_rota(r):
@@ -1200,6 +1511,11 @@ def texto_rota(r):
         L = [cab + " (%s)" % r["motivo"]]
     for a in r["avisos"]:
         L.append("  " + a)
+    if r["do_brief"][0] >= 2:
+        L.append("  brief: %d das ultimas %d entregas voltaram por falta no brief "
+                 "(nao conta contra o modelo)" % (r["do_brief"][0], r["do_brief"][1]))
+    for f in r["faltou"]:
+        L.append("  faltou no brief: " + f)
     for l in r["licoes"]:
         L.append("  licao: " + l)
     e = r["experimento"]
@@ -1221,6 +1537,9 @@ def cmd_ficha(args):
     if args.json:
         print(json.dumps(rotas, ensure_ascii=False, indent=2))
     else:
+        t = tamanho_geral(regs)
+        if t is not None and (args.tipo is None or args.tipo in TIPOS_ESCRITA):
+            print(texto_tamanho(t))
         for r in rotas:
             for l in texto_rota(r):
                 print(l)
@@ -1284,6 +1603,21 @@ def cmd_resumo(args):
             "%s %s" % (m, _fmt_mi(somas[m])) for m in MODELOS if m in somas))
     partes.append("haiku fez %d de %d" % (
         len([r for r in validos if r["modelo"] == "haiku"]), len(validos)))
+    forte = [r for r in validos if r["modelo"] in ("opus", "fable") and r["tipo"] in TIPOS_ESCRITA]
+    if forte:
+        rot = "+".join(m for m in ("opus", "fable") if any(r["modelo"] == m for r in forte))
+        toks = [_tok_saida(r) for r in forte]
+        toks = [t for t in toks if t is not None]
+        partes.append("%s em execucao: %d tarefas, %s de saida, %d de primeira" % (
+            rot, len(forte), _fmt_mi(sum(toks)) if toks else "-",
+            len([r for r in forte if r["resultado"] == "de_primeira"])))
+    com_resp = [r for r in validos if r["tipo"] in TIPOS_ESCRITA
+                and isinstance(r.get("respostas_1a"), int) and not isinstance(r.get("respostas_1a"), bool)]
+    grandes = [r for r in com_resp if r["respostas_1a"] >= GRANDE_RESPOSTAS]
+    if grandes:
+        partes.append("grandes: %d de %d de escrita, %d de primeira" % (
+            len(grandes), len(com_resp),
+            len([r for r in grandes if r["resultado"] == "de_primeira"])))
     print(" | ".join(partes))
     if args.por_frente:
         grupos = {}
@@ -1348,6 +1682,10 @@ def gerar_bloco(regs):
     L = []
     L.append("Gerado em %s - %d registros." % (agora, len(regs)))
     L.append("")
+    tam = tamanho_geral(regs)
+    if tam is not None:
+        L.append(texto_tamanho(tam))
+        L.append("")
     L.append("| tipo | rota atual | haiku (de primeira/n) | sonnet (de primeira/n) | opus (de primeira/n) | avisos |")
     L.append("|---|---|---|---|---|---|")
     for r in rotas:
@@ -1375,6 +1713,15 @@ def gerar_bloco(regs):
     if not algum:
         L.append("Sem licoes registradas ainda.")
         L.append("")
+    faltas = [r for r in rotas if r["faltou"]]
+    if faltas:
+        L.append("## O que faltou no brief")
+        L.append("")
+        for r in faltas:
+            L.append("### %s (%s)" % (r["tipo"], r["modelo"]))
+            for f in r["faltou"]:
+                L.append("- " + _limpar(f))
+            L.append("")
     L.append("## Exemplos de brief")
     L.append("")
     achou = False
@@ -1846,15 +2193,26 @@ def montar_parser():
     r.add_argument("--brief", required=True, type=int)
     r.add_argument("--effort", choices=EFFORTS)
     r.add_argument("--erro", action="append",
-                   help='repetivel; formato "classe: detalhe" (classes abaixo)')
+                   help='repetivel; a classe e obrigatoria: "classe: detalhe" (classes abaixo)')
     r.add_argument("--licao")
     r.add_argument("--projeto")
     r.add_argument("--tarefa")
     r.add_argument("--experimento", action="store_true")
+    r.add_argument("--achados", type=int, help="revisao: quantos achados o revisor trouxe")
+    r.add_argument("--confirmados", type=int,
+                   help="revisao: quantos o chefe confirmou reproduzindo ou lendo o codigo")
     r.add_argument("--tokens", type=int)
     r.add_argument("--agente", help="descricao do subagente (igual ou prefixo); deduz tipo, "
                                     "modelo real e tokens do transcript")
     r.set_defaults(fn=cmd_registrar)
+
+    rc = sub.add_parser("reclassificar", help="conserta a classe dos erros ja gravados")
+    g = rc.add_mutually_exclusive_group(required=True)
+    g.add_argument("--listar", action="store_true", help="lista registros com erro de classe outro")
+    g.add_argument("--id", help="id do registro a corrigir")
+    rc.add_argument("--classe", action="append", choices=_NOMES_CLASSE,
+                    help="repetivel; uma por erro do registro, na ordem")
+    rc.set_defaults(fn=cmd_reclassificar)
 
     f = sub.add_parser("ficha", help="rota recomendada por tipo (fable e aceito no registro e "
                                      "aparece nas stats, mas nao entra na rota)")

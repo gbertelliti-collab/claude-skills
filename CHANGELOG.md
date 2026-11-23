@@ -2,6 +2,24 @@
 
 O plugin não tem número de versão: cada commit na `main` chega em quem instalou (veja "Receber atualizações" no README). As entradas abaixo são por data.
 
+## 2026-11-23: melhorias tiradas de nove dias de uso real
+
+O registro do autor tinha 267 tarefas em 12 projetos. A análise dele e dos transcripts dos operários mostrou onde a skill falhava; os números estão no README ("O que nove dias de uso mudaram no plugin") e em `fundamentos.md`.
+
+### Novo
+
+- **Tamanho da tarefa.** Escrita que o operário fechou em menos de 30 respostas até a primeira entrega passou de primeira 78% das vezes; com 30 ou mais, 45%. O `registrar` grava `respostas_1a` (lido do transcript, sem contar a correção), a ficha abre com a linha `tamanho:` quando o seu registro já mostra a diferença, e a skill ganhou a regra "um objetivo por tarefa".
+- **Falta do brief não pune o modelo.** Rodada registrada como `corrigido` com `--licao` e sem `--erro` não conta contra o modelo na rota, e a ficha mostra a lição em `faltou no brief:`. Antes, três rodadas por brief incompleto faziam a ficha mandar subir o effort do modelo.
+- **Placar de revisão.** `registrar --achados N --confirmados M` em tarefa de revisão; a ficha soma por modelo de revisor.
+- **`operarios.py reclassificar`.** `--listar` mostra os erros gravados sem classe; `--id <id> --classe <classe>` conserta, guardando uma cópia do registro.
+- **Linha de fechamento.** O `resumo` mostra `opus em execucao: N tarefas, X de saida, K de primeira` e `grandes: N de M de escrita, K de primeira` quando houver.
+- **Avisos do `registrar`.** Depois de gravar, ele avisa quando a tarefa era grande e precisou de correção, quando uma tarefa pequena passou de primeira e a próxima vale o experimento no modelo mais barato, e quando a linha não ensina nada (sem `--erro` e sem `--licao`).
+
+### Mudou
+
+- **Classe de erro obrigatória.** `--erro` sem classe conhecida agora é recusado (exit 13, nada gravado) com a lista das classes. Antes caía calado em `outro`: 29 de 35 erros do registro estavam assim, e a ficha quase não gerava aviso. Variações como `escopo-incompleto:` e `segurança:` são aceitas.
+- **Regra de modelo.** A skill passa a dizer: tarefa difícil pede tarefa menor e brief mais desenhado antes de modelo maior. No registro, o Opus como executor passou 9 de 24 de primeira e respondeu por metade da saída.
+
 ## 2026-11-17: o plugin avisa quando não está recebendo atualizações
 
 Marketplace de terceiro nasce com a atualização automática desligada, e quem publica não consegue ligar por ninguém. Quem instalava ficava parado na versão do dia da instalação sem saber.

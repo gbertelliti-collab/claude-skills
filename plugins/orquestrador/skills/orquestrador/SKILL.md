@@ -7,7 +7,7 @@ description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de c
 
 A sessao e o chefe: pensa, decide, confere e integra. Operarios Haiku e Sonnet leem e digitam. Toda tarefa delegada vira 1 linha no registro; a ficha que sai do registro diz quem recebe a proxima tarefa daquele tipo e quanto detalhe o brief leva.
 
-Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
+Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
 
 Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
 
@@ -54,7 +54,7 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 
 ## Ciclo
 
-**1. Ficha.** `operarios.py ficha` uma vez no comeco (`--tipo <tipo>` pra um so). Por tipo: modelo, nivel de brief, effort, avisos (com o que reforcar no brief), licoes, exemplo de brief que funcionou, custo mediano e experimento sugerido.
+**1. Ficha.** `operarios.py ficha` uma vez no comeco (`--tipo <tipo>` pra um so). Por tipo: modelo, nivel de brief, effort, avisos (com o que reforcar no brief), licoes, o que faltou no brief nas ultimas vezes, exemplo de brief que funcionou, custo mediano e experimento sugerido. No topo, a linha `tamanho:` quando o seu registro ja mostra a diferenca entre tarefa pequena e grande.
 
 **2. Quebrar.** Cada tarefa tem um tipo, arquivos donos (um escritor por arquivo) e um ACEITE que o chefe roda sozinho. Primeiro o dominio; so o codigo que nao e tela, teste nem banco se divide em mecanica x logica:
 
@@ -76,12 +76,15 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 
 Na duvida entre mecanica e logica: logica. Tipo errado suja a ficha do tipo certo.
 
+Tamanho: um OBJETIVO por tarefa de escrita. Em uso real medido, escrita que o operario fechou em menos de 30 respostas ate a primeira entrega passou de primeira 78% das vezes; com 30 ou mais, 45%, e a correcao custou mais de um quarto de toda a saida dos executores. O tamanho do brief nao preve isso (brief mais longo acertou MAIS); o que preve e a tarefa carregar varios objetivos. Sinais de que sao duas tarefas: titulo com "e" ou com lista ("regra X, tela Y e prova Z"), mais de um ACEITE, conserto de varios achados sem relacao, investigar E consertar. Quebre por objetivo; o que depende do anterior vai em sequencia, no mesmo dono de arquivo.
+
 Escala: fato simples = 1 leitor; comparacao ou mapa de repo = 2 a 4 leitores; codigo = 1 leitor pra mapear, o chefe decide, 1 a 3 executores de arquivos separados. Teto padrao de 4 ao mesmo tempo; o usuario ou o README do projeto podem dar outro (anote o teto e o recurso que limita: memoria, um emulador so, um banco). Passou do teto: segure a revisao e o que depende de outra tarefa; entram na 1a vaga. Mais de 5 tarefas: arquivo de estado (1 linha por tarefa), escrito so pelo chefe; depois de compactar ou retomar a sessao, leia o arquivo e rode `retomar` (o que a sessao despachou e ainda nao registrou; o hook do plugin ja traz isso sozinho). Duas frentes que nao se tocam e 8 ou mais tarefas: `modo-god.md`.
 
 **3. Rota.** Use modelo, brief e effort da ficha; pode divergir com motivo de 1 linha.
 
 - O que o usuario disse na sessao sobre modelo ou quantidade de agentes vence a ficha na hora, e a regra do projeto tambem. Registre do mesmo jeito, com o motivo.
 - Tarefa que so da pra conferir por opiniao (texto, design, decisao) nao vai pro modelo mais barato: descer de modelo so compensa quando a conferencia pega o erro.
+- Modelo maior em execucao nao compra acerto. Em uso real medido, o modelo maior como executor (tarefa grande, brief nivel 2) passou de primeira 9 de 24 vezes e gastou metade de toda a saida; o intermediario, com brief nivel 3 e tarefa pequena, 3 em cada 4. Tarefa dificil pede brief mais desenhado e tarefa menor ANTES de modelo maior. O `resumo` mostra `opus em execucao: ...` quando isso acontece.
 - `experimento:` na ficha = ela ainda nao sabe se o modelo mais barato aguenta aquele tipo. Aceite nas tarefas mais mecanicas do tipo (a repeticao), com ACEITE executavel, ate fechar os 4 (`feitos K de 4`), e registre com `--experimento`. Sem isso o Sonnet faz tudo e a ficha nunca aprende o que o Haiku aguenta.
 
 **4. Brief.** O brief e o contrato, nesta ordem:
@@ -135,7 +138,7 @@ Brief DESENHADO e o padrao: o operario nao conhece a conversa, o projeto nem a s
 - Pesquisa e leitura: confira por amostra 1 ou 2 afirmacoes que pesam na decisao.
 - Revisor independente quando ha JULGAMENTO em jogo: codigo nao trivial, ou dinheiro/folha/seguranca/migracao (ai com `opus`). Mudanca mecanica provada por grep ou print nao precisa. Nunca o proprio executor. Ele revisa tambem as CORRECOES (regressao, correcao que nao corrige, teste que nao prova).
 - Mensagem de erro, codigo de status ou nome de campo que voce decidiu no brief: confira quem CONSOME do outro lado antes de despachar.
-- Cada achado do revisor voce reproduz ou le no codigo (CONFIRMADO/REFUTADO) antes de mandar corrigir. Revisao sem linha `VEREDITO:` falhou. Achado menor nao corrigido vai pro relatorio final.
+- Cada achado do revisor voce reproduz ou le no codigo (CONFIRMADO/REFUTADO) antes de mandar corrigir. Revisao sem linha `VEREDITO:` falhou. Achado menor nao corrigido vai pro relatorio final. Registre a revisao com `--achados N --confirmados M`: a ficha passa a mostrar quanto cada modelo de revisor acha de verdade, e e isso que decide Sonnet ou Opus na revisao.
 
 **7. Corrigir** (teto de 3 rodadas por tarefa):
 
@@ -154,20 +157,23 @@ Atalho: se, pra escrever o proximo brief, voce ja achou a causa e o conserto cab
 python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[haiku:front] cartao na lista de clientes" --resultado escalado --rodadas 2 --brief 3 --experimento --erro "escopo: nao trocou o cartao na versao de celular" --erro "borda: lista vazia quebrava" --projeto meu-app
 python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[sonnet:front] cartao na lista de clientes" --resultado de_primeira --rodadas 0 --brief 3 --licao "colar o cartao pronto e listar os 2 arquivos (desktop e celular)" --projeto meu-app
 python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --tipo leitura --modelo sonnet --resultado anulado --rodadas 0 --brief 2 --projeto meu-app --tarefa "servicos exportados (brief barrado pelo classificador)"
+python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[sonnet:revisao] revisao do cartao" --resultado de_primeira --rodadas 0 --brief 2 --achados 4 --confirmados 3 --projeto meu-app
 ```
 
 - `--agente` = a `description` do despacho: o script le no transcript o modelo que rodou DE VERDADE, o tipo, os tokens, quem e o mestre, e guarda o brief como exemplo quando passou de primeira. Sem transcript (tarefa `anulado`): `--tipo` e `--modelo` na mao.
 - `resultado`: `de_primeira` (passou na 1a conferencia), `corrigido` (passou depois de N rodadas no mesmo modelo), `escalado` (subiu de modelo; registre tambem a linha de quem pegou), `falhou` (o chefe fez), `anulado` (nao rodou ou foi barrado; nao conta na ficha).
 - `--brief`: o nivel que voce usou no despacho. A ficha aprende por nivel.
-- `--erro "classe: detalhe"`: so falha do OPERARIO confirmada por checagem, UM erro por flag. Classes: `escopo`, `contrato`, `borda`, `estado`, `desempenho`, `teste`, `alegacao`, `leitura`, `visual`, `seguranca`, `outro` (o que cada uma e: `registrar --help`). E a classe que vira AVISO.
+- `--erro "classe: detalhe"`: so falha do OPERARIO confirmada por checagem, UM erro por flag. Classes: `escopo`, `contrato`, `borda`, `estado`, `desempenho`, `teste`, `alegacao`, `leitura`, `visual`, `seguranca`, `outro` (o que cada uma e: `registrar --help`). E a classe que vira AVISO, por isso e obrigatoria: sem classe conhecida o `registrar` recusa (exit 13, nada gravado) e lista as classes; `outro` so quando nenhuma couber. Erro antigo gravado sem classe: `reclassificar --listar`, depois `reclassificar --id <id> --classe <classe>` (uma por erro).
 - `--licao`: so em tarefa que passou: o ajuste de brief ou de rota que funcionou.
-- Rodada causada por brief incompleto ou errado (o operario fez o que foi pedido): `corrigido` com a `--licao` do que faltou no brief e SEM `--erro`.
+- Rodada causada por brief incompleto ou errado (o operario fez o que foi pedido): `corrigido` com a `--licao` do que faltou no brief e SEM `--erro`. A ficha nao conta essa rodada contra o modelo e mostra a licao em `faltou no brief:`. `corrigido` sem `--erro` e sem `--licao` nao ensina nada.
+- `--achados N --confirmados M`: so em revisao (passo 6).
+- O `registrar` pode responder com `AVISO:` (tarefa grande, candidata ao experimento no modelo mais barato, linha que nao ensina): aplique na PROXIMA tarefa.
 
 **9. Fechar.**
 
 - `operarios.py conferir`: modelo pedido x modelo real de cada operario da sessao. Exit 3 = problema (modelo divergiu, neto sem modelo, andar a mais): diga no relatorio. Exit 10 = nenhum operario na sessao.
 - `operarios.py atualizar`: regrava a ficha no arquivo de `ORQ_FICHA`. Sem a variavel, so avisa e sai 0.
-- `operarios.py resumo`: a linha `operarios: N tarefas, X de primeira... | saida: ... | haiku fez A de N` do relatorio.
+- `operarios.py resumo`: a linha `operarios: N tarefas, X de primeira... | saida: ... | haiku fez A de N` do relatorio (mais `opus em execucao: ...` e `grandes: ...` quando houver: sao os dois lugares pra onde o token costuma ir).
 - Relatorio: o que foi feito, como foi conferido, o que nao foi verificado, achados menores em aberto.
 
 ## Modo god (resumo; antes de usar leia `modo-god.md` inteiro)
@@ -185,7 +191,9 @@ Tres andares. O ENGENHEIRO (Fable) nao fica na obra: faz 3 visitas (a analise qu
 | colar diff ou log inteiro no contexto do chefe | operario devolve resumo; saida grande em arquivo, por `orq-executor` |
 | suite inteira a cada tarefa | teste direcionado por tarefa, suite no fim |
 | registrar so o que deu certo, ou `falhou` no que nem rodou | registre tudo; o que nao rodou e `anulado` |
-| `--erro` sem classe, ou varios erros num `--erro` so | `classe: detalhe`, um por flag |
+| `--erro` sem classe, ou varios erros num `--erro` so | `classe: detalhe`, um por flag (sem classe o `registrar` recusa) |
+| tarefa com varios objetivos num operario so | um objetivo por tarefa; lista vira N tarefas |
+| subir pro modelo maior porque a tarefa e dificil | brief nivel 3 e tarefa menor primeiro |
 | repetir a mesma correcao no mesmo operario | sem progresso = operario novo um modelo acima |
 | operario decidindo design | o brief traz a decisao; FALTA_CONTEXTO volta pro chefe |
 

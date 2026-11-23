@@ -158,6 +158,20 @@ Lições que o registro guardou de tarefas que passaram de primeira e que hoje e
 | revisão | Pedir prova por execução. Numa revisão do motor, 15 achados e os 15 confirmados. |
 | coordenação | Planta com os fatos já medidos e aceite numérico: uma frente inteira em 16 respostas do mestre. |
 
+### O que nove dias de uso mudaram no plugin
+
+Em 23/11/2026 o registro tinha 267 tarefas em 12 projetos. A análise dele achou cinco pontos fracos, e cada um virou mudança no motor ou regra na skill:
+
+| o que o registro mostrou | o que mudou |
+|---|---|
+| Tarefa de escrita que o operário fechou em menos de 30 respostas até a primeira entrega passou de primeira 62 de 79 vezes (78%). Com 30 ou mais, 20 de 44 (45%). | Regra "um objetivo por tarefa". O motor grava o tamanho até a primeira entrega, a ficha mostra a linha `tamanho:` com os números do seu registro e o `registrar` avisa quando uma tarefa grande precisou de correção. |
+| O Opus como executor rodou 24 tarefas, passou 9 de primeira e respondeu por 53% de toda a saída. Eram tarefas grandes com brief menos detalhado. | Regra "tarefa menor e brief mais desenhado antes de modelo maior". A linha de fechamento mostra `opus em execucao: ...`. |
+| 18 das 43 entregas que não passaram de primeira voltaram por falta no brief do chefe, e a ficha punia o modelo do mesmo jeito. | Rodada registrada como falta do brief não conta contra o modelo e aparece na ficha em `faltou no brief:`. |
+| 29 de 35 erros foram registrados sem classe, então a ficha quase não gerava aviso. | O `registrar` recusa erro sem classe e lista as classes. O comando `reclassificar` conserta os antigos. |
+| Revisão "de primeira" 68 de 68 vezes não diz se o revisor achou alguma coisa. | A revisão é registrada com `--achados` e `--confirmados`, e a ficha mostra o placar por modelo de revisor. |
+
+O tamanho é contado até a primeira entrega porque a correção soma respostas no mesmo transcript e faria a tarefa que errou parecer maior. Tamanho do brief não previu erro: brief mais longo acertou mais.
+
 > [!NOTE]
 > Leia os números com o tamanho que eles têm: um usuário e poucos dias de uso. "De primeira" quer dizer que passou na primeira conferência do chefe, que roda o aceite ele mesmo. Custo é token ponderado pelo preço de API de cada modelo, não fatura. A sua ficha começa vazia e vai chegar aos seus próprios números.
 
@@ -318,7 +332,7 @@ A configuração `skillOverrides` do Claude Code não vale para skill de plugin,
 ### O motor
 
 ```bash
-python <pasta da skill>/operarios.py <status|ficha|registrar|conferir|retomar|resumo|atualizar|atualizacao>
+python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>
 python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 

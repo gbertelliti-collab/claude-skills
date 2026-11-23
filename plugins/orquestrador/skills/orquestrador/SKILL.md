@@ -7,7 +7,7 @@ description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de c
 
 A sessao e o chefe: pensa, decide, confere e integra. Operarios Haiku e Sonnet leem e digitam. Toda tarefa delegada vira 1 linha no registro; a ficha que sai do registro diz quem recebe a proxima tarefa daquele tipo e quanto detalhe o brief leva.
 
-Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
+Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
 
 Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
 
@@ -121,6 +121,7 @@ Brief DESENHADO e o padrao: o operario nao conhece a conversa, o projeto nem a s
 - `model` explicito em TODA chamada (o alias da ficha: `haiku`, `sonnet`, `opus`). `effort` so quando a ficha mandar.
 - `description` = `[modelo:tipo] resumo`, unica na sessao: o `registrar --agente` e o `conferir` usam.
 - Independentes na mesma mensagem, em background; espere a notificacao, nao leia o arquivo de saida.
+- O plugin confere cada despacho na hora (hook): se faltar `model`, etiqueta `[modelo:tipo]` ou ACEITE, se o papel nao servir pro tipo, ou se for modelo maior em execucao contra a ficha, chega uma linha `orquestrador: aviso sobre o despacho` junto da resposta daquela chamada. Nao bloqueia: o operario ja esta rodando; aplique no proximo despacho e, se o aviso pegou algo que muda a entrega (brief sem ACEITE), mande o que faltou por SendMessage. `ORQ_SEM_AVISO_DESPACHO=1` desliga.
 - Papel `orq-*` nao existe na sessao (aberta antes da instalacao do plugin)? `general-purpose` com o mesmo `model` e a ordem de ler o arquivo `agents/orq-<papel>.md` do plugin orquestrador.
 - Enquanto um executor esta vivo, o chefe nao escreve no git (add, commit, stash, checkout) nem edita os arquivos dele.
 - Brief barrado pelo classificador de seguranca, ou tarefa que nem rodou: reescreva o enquadramento ou faca voce, e registre `anulado`.

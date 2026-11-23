@@ -335,7 +335,7 @@ A configuração `skillOverrides` do Claude Code não vale para skill de plugin,
 ### O motor
 
 ```bash
-python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>
+python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
 python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -370,6 +370,7 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 | `ORQ_PROJECTS` | pasta dos transcripts do Claude Code | `~/.claude/projects` |
 | `ORQ_PRECOS` | arquivo JSON que sobrescreve preços da tabela do `custo.py` (o mesmo que `--precos`; `--mostrar-precos` imprime a tabela atual para você salvar e editar) | tabela interna, com a data em que foi lida |
 | `ORQ_SEM_AVISO_ATUALIZACAO` | `1` cala o aviso de atualização automática desligada | avisa (no máximo 3 vezes) |
+| `ORQ_SEM_AVISO_DESPACHO` | `1` cala o aviso na hora do despacho | avisa, sem bloquear |
 
 - **Nome dos agentes:** agente de plugin leva o prefixo do plugin, então o `subagent_type` é `orquestrador:orq-leitor`, `orquestrador:orq-executor` e assim por diante. Se a sua versão do Claude Code mostrar os agentes sem prefixo, use o nome simples.
 - **`PROJETOS.md`:** `provar-na-tela` e `bater-valores` leem um `PROJETOS.md` opcional na pasta de cada skill (como subir, entrar e conferir cada projeto seu). Copie o `PROJETOS.exemplo.md` e preencha; sem ele, as skills usam o README do projeto.
@@ -386,12 +387,14 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 
 **Retomada automática.** O plugin traz um hook de início de sessão que só age depois que o contexto compacta ou a sessão é retomada: se a sessão já tinha despachado operários, ele devolve ao chefe a lista de quem ficou sem registro (o mesmo que `operarios.py retomar`). Sem operários, não imprime nada. Ele só lê os transcripts locais e precisa de Python 3 e de `sh` (no Windows, o Git Bash).
 
+**Aviso na hora do despacho.** Outro hook olha cada operário da skill no momento em que o chefe abre o agente e devolve um aviso curto quando o despacho foge das regras: sem `model`, descrição sem `[modelo:tipo]`, etiqueta que diz um modelo e `model` que diz outro, tarefa de escrita para o leitor ou o revisor, brief sem ACEITE, Opus ou Fable em execução quando a ficha manda um modelo menor, e experimento aberto para aquele tipo. O aviso chega ao chefe junto da resposta daquela chamada e **nunca bloqueia**: o operário roda do mesmo jeito e a correção vale para o próximo despacho. Os dois últimos avisos saem uma vez por sessão e por tipo. Agente que não é da skill (`Explore`, `general-purpose` sem etiqueta, agentes de outros plugins) passa sem nada: o script nem chama o Python. Para conferir um despacho na mão: `operarios.py despacho` com o JSON da chamada na entrada padrão.
+
 ```text
 .claude-plugin/marketplace.json     o marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        o plugin (sem número de versão: cada commit é uma versão)
   agents/                           os 5 papéis orq-*, cada um com sua cor na lista de tarefas
-  hooks/                            retomada depois de compactar; aviso de atualização desligada
+  hooks/                            retomada depois de compactar; aviso de atualização desligada; aviso na hora do despacho
   skills/
     orquestrador/
       SKILL.md                      o ciclo do chefe
@@ -439,7 +442,7 @@ O que mudou em cada data está no [CHANGELOG](CHANGELOG.md). Para contribuir, ve
 
 O repositório traz só números agregados do uso: nenhum brief real, nenhum nome de projeto e nenhuma tabela de projetos. A ficha de quem instala começa vazia e aprende com o próprio uso. O registro, a ficha e o `PROJETOS.md` que você preencher ficam só na sua máquina (estão no `.gitignore`).
 
-Os dois hooks do plugin só leem arquivos locais e não usam a rede. O de atualização lê a configuração de plugins do Claude Code para saber se a atualização automática está ligada e guarda a data do último aviso; o seu `settings.json` só é alterado quando você aceita, pelo comando `atualizacao --ligar`.
+Os três hooks do plugin só leem arquivos locais e não usam a rede. O de despacho lê o registro e a chamada do agente (o brief não é gravado em lugar nenhum) e guarda, ao lado do registro, quais avisos já deu na sessão. O de atualização lê a configuração de plugins do Claude Code para saber se a atualização automática está ligada e guarda a data do último aviso; o seu `settings.json` só é alterado quando você aceita, pelo comando `atualizacao --ligar`.
 
 ## Licença
 

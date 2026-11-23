@@ -1563,6 +1563,56 @@ class TestHooksSh(Base):
         p = self.hook("atualizacao.sh")
         self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""))
 
+    def entrada_agent(self, desc, papel, model=None, prompt="x"):
+        ti = {"description": desc, "prompt": prompt, "subagent_type": papel}
+        if model:
+            ti["model"] = model
+        return json.dumps({"session_id": "S", "hook_event_name": "PreToolUse", "tool_name": "Agent",
+                           "tool_input": ti})
+
+    def test_4_despacho_sh_avisa_sem_bloquear(self):
+        p = self.hook("despacho.sh", self.entrada_agent("cartao", "orquestrador:orq-executor"))
+        self.assertEqual((p.returncode, p.stderr), (0, ""))
+        o = json.loads(p.stdout)
+        self.assertEqual(list(o), ["hookSpecificOutput"], "so contexto: nada de decisao de permissao")
+        h = o["hookSpecificOutput"]
+        self.assertEqual(sorted(h), ["additionalContext", "hookEventName"])
+        self.assertEqual(h["hookEventName"], "PreToolUse")
+        for trecho in ("nao bloqueia", "sem model", "descricao sem [modelo:tipo]", "brief sem ACEITE"):
+            self.assertIn(trecho, h["additionalContext"])
+
+    def test_5_despacho_sh_calado_fora_da_skill(self):
+        certo = self.entrada_agent("[sonnet:front] cartao", "orq-executor", "sonnet", "OBJETIVO x ACEITE: y")
+        for entrada in (self.entrada_agent("Explore the repo", "Explore"),
+                        self.entrada_agent("Pesquisar precos [rascunho]", "general-purpose", "opus"),
+                        self.entrada_agent("ler a pasta docs", "claude"),
+                        certo, "", "{quebrado orq-"):
+            p = self.hook("despacho.sh", entrada)
+            self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""), entrada)
+
+    def test_6_despacho_sh_nem_chama_o_motor_fora_da_skill(self):
+        # motor trocado por um que sempre fala: agente comum nao pode chegar nele
+        with io.open(os.path.join(self.raiz, "skills", "orquestrador", "operarios.py"), "w",
+                     encoding="utf-8") as f:
+            f.write('print(\'{"chamou": 1}\')\n')
+        p = self.hook("despacho.sh", self.entrada_agent("Explore the repo", "Explore"))
+        self.assertEqual((p.returncode, p.stdout), (0, ""))
+        p = self.hook("despacho.sh", self.entrada_agent("cartao", "orq-executor"))
+        self.assertEqual((p.returncode, p.stdout.strip()), (0, '{"chamou": 1}'))
+
+    def test_6b_despacho_sh_so_repassa_json(self):
+        # interpretador que sai 0 dizendo outra coisa (atalho de loja, aviso de versao) nao vira contexto
+        with io.open(os.path.join(self.raiz, "skills", "orquestrador", "operarios.py"), "w",
+                     encoding="utf-8") as f:
+            f.write('print("Python was not found; run without arguments to install")\n')
+        p = self.hook("despacho.sh", self.entrada_agent("cartao", "orq-executor"))
+        self.assertEqual((p.returncode, p.stdout, p.stderr), (0, "", ""))
+
+    def test_7_despacho_sh_sem_motor_fica_calado(self):
+        os.remove(os.path.join(self.raiz, "skills", "orquestrador", "operarios.py"))
+        p = self.hook("despacho.sh", self.entrada_agent("cartao", "orq-executor"))
+        self.assertEqual((p.returncode, p.stdout), (0, ""))
+
 
 class TestClasseObrigatoria(Base):
     def regs_args(self, *erros):
@@ -2099,6 +2149,185 @@ class TestFichaUsoReal(Base):
         self.grava("busca", "haiku", "de_primeira", respostas_1a=99)
         p = self.run_op("resumo", "--todas")
         self.assertIn("grandes: 3 de 6 de escrita, 2 de primeira", p.stdout)
+
+
+class TestDespacho(Base):
+    def desp(self, desc, st="orq-executor", model="sonnet", prompt="OBJETIVO: x ACEITE: npm test",
+             sid=None, tool="Agent", hook=True, env_extra=None):
+        ti = {"description": desc, "prompt": prompt, "subagent_type": st}
+        if model is not None:
+            ti["model"] = model
+        d = {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": ti}
+        if sid:
+            d["session_id"] = sid
+        return self.bruto(json.dumps(d), hook=hook, env_extra=env_extra)
+
+    def bruto(self, texto, hook=True, env_extra=None):
+        env = dict(self.env)
+        env.update(env_extra or {})
+        a = [sys.executable, SCRIPT, "despacho"] + (["--hook"] if hook else [])
+        p = subprocess.run(a, input=texto, env=env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("Traceback", p.stderr)
+        return p
+
+    def ctx(self, p):
+        if not p.stdout.strip():
+            return ""
+        o = json.loads(p.stdout)
+        h = o["hookSpecificOutput"]
+        self.assertEqual(h["hookEventName"], "PreToolUse")
+        return h["additionalContext"]
+
+    def test_1_certo_fica_calado(self):
+        self.assertEqual(self.desp("[sonnet:front] cartao").stdout.strip(), "")
+
+    def test_2_explore_nada(self):
+        p = self.desp("Explore the repo", st="Explore", model=None, prompt="x")
+        self.assertEqual(p.stdout.strip(), "")
+
+    def test_3_general_purpose_opus_nada(self):
+        p = self.desp("Pesquisar precos", st="general-purpose", model="opus", prompt="x")
+        self.assertEqual(p.stdout.strip(), "")
+
+    def test_4_sem_model_sem_etiqueta(self):
+        c = self.ctx(self.desp("cartao na lista", model=None))
+        self.assertIn("sem model", c)
+        self.assertIn("descricao sem [modelo:tipo]", c)
+        self.assertIn('despacho "cartao na lista"', c)
+
+    def test_5_modelo_diverge_e_opus_em_execucao(self):
+        c = self.ctx(self.desp("[sonnet:front] cartao", st="orquestrador:orq-executor",
+                               model="claude-opus-5-5"))
+        self.assertIn("a descricao diz sonnet e o model e claude-opus-5-5", c)
+        self.assertIn("opus em execucao: a ficha manda sonnet brief 3 pra front", c)
+
+    def test_6_tipo_inexistente(self):
+        c = self.ctx(self.desp("[sonnet:fronte] x", prompt="x"))
+        self.assertIn('tipo "fronte" nao existe. Tipos: busca, leitura', c)
+
+    def test_7_leitor_em_escrita(self):
+        c = self.ctx(self.desp("[sonnet:edicao-logica] regra", st="orq-leitor"))
+        self.assertIn("orq-leitor nao grava arquivo: tarefa de edicao-logica vai pra orq-executor", c)
+
+    def test_8_sem_aceite(self):
+        c = self.ctx(self.desp("[sonnet:front] cartao", prompt="OBJETIVO: x"))
+        self.assertIn("brief sem ACEITE", c)
+
+    def test_9_leitura_sem_aceite_ok(self):
+        p = self.desp("[haiku:leitura] ler logs", st="orq-leitor", model="haiku", prompt="ler")
+        self.assertEqual(p.stdout.strip(), "")
+
+    def test_10_revisao_em_opus_ok(self):
+        p = self.desp("[opus:revisao] diff", st="orq-revisor", model="opus", prompt="x")
+        self.assertEqual(p.stdout.strip(), "")
+
+    def test_11_etiqueta_em_general_purpose_ok(self):
+        self.assertEqual(self.desp("[sonnet:front] x", st="general-purpose").stdout.strip(), "")
+
+    def test_12_f_so_uma_vez_por_sessao(self):
+        a = self.ctx(self.desp("[sonnet:front] cartao", model="claude-opus-5-5", sid="s1"))
+        b = self.ctx(self.desp("[sonnet:front] cartao", model="claude-opus-5-5", sid="s1"))
+        self.assertIn("opus em execucao", a)
+        self.assertNotIn("opus em execucao", b)
+        self.assertIn("a descricao diz sonnet", a)
+        self.assertIn("a descricao diz sonnet", b)
+        c = self.ctx(self.desp("[sonnet:front] cartao", model="claude-opus-5-5", sid="s2"))
+        self.assertIn("opus em execucao", c)
+
+    def test_13_variavel_desliga(self):
+        p = self.desp("[sonnet:front] cartao", model="claude-opus-5-5",
+                      env_extra={"ORQ_SEM_AVISO_DESPACHO": "1"})
+        self.assertEqual(p.stdout.strip(), "")
+
+    def test_14_entradas_ruins(self):
+        for txt in ("", "{quebrado", "[]", json.dumps({"tool_name": "Bash", "tool_input": {}}),
+                    json.dumps({"tool_name": "Agent", "tool_input": "x"})):
+            p = self.bruto(txt)
+            self.assertEqual(p.stdout.strip(), "", txt)
+
+    def test_15_experimento_avisa_uma_vez(self):
+        self.grava("front", "sonnet", "de_primeira", n=6, brief=3)
+        self.assertTrue(self.ficha_json("front").get("experimento"))
+        a = self.ctx(self.desp("[sonnet:front] x", sid="s9"))
+        b = self.ctx(self.desp("[sonnet:front] x", sid="s9"))
+        self.assertIn("experimento aberto em front: haiku brief 3", a)
+        self.assertEqual(b, "")
+
+    def test_avisos_torto_nao_derruba(self):
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        with io.open(os.path.join(os.path.dirname(self.registro), "despacho-avisos.json"),
+                     "w", encoding="utf-8") as f:
+            f.write("{torto")
+        c = self.ctx(self.desp("[sonnet:front] cartao", model="claude-opus-5-5", sid="s1"))
+        self.assertIn("opus em execucao", c)
+
+    def test_nao_escreve_no_registro(self):
+        self.desp("[sonnet:front] cartao", model="claude-opus-5-5", sid="s1")
+        self.assertFalse(os.path.exists(self.registro))
+
+    def test_sem_hook(self):
+        self.assertIn("despacho ok", self.desp("[sonnet:front] cartao", hook=False).stdout)
+        self.assertIn("nao e despacho da skill",
+                      self.desp("Explore", st="Explore", model=None, hook=False).stdout)
+        p = self.desp("cartao", model=None, prompt="x", hook=False)
+        linhas = p.stdout.strip().splitlines()
+        self.assertEqual(len(linhas), 3)
+        self.assertTrue(linhas[0].startswith("sem model"))
+        self.assertTrue(linhas[2].startswith("brief sem ACEITE"))
+
+    def test_executor_sem_etiqueta_pede_aceite(self):
+        # o papel orq-executor ja diz que a tarefa escreve, mesmo sem [modelo:tipo]
+        c = self.ctx(self.desp("cartao", model=None, prompt="x"))
+        for trecho in ("sem model", "descricao sem [modelo:tipo]", "brief sem ACEITE"):
+            self.assertIn(trecho, c)
+        self.assertNotIn("brief sem ACEITE", self.ctx(self.desp("cartao", model=None)))
+        # leitor e revisor sem etiqueta nao recebem a cobranca de ACEITE
+        self.assertNotIn("brief sem ACEITE", self.ctx(self.desp("ler logs", st="orq-leitor", prompt="x")))
+
+    def test_acento_na_descricao(self):
+        # o Claude Code manda UTF-8 cru (sem escape): a leitura nao pode depender do encoding do sistema
+        nome = "cart" + chr(227) + "o novo"
+        d = {"tool_name": "Agent", "tool_input": {"description": nome, "prompt": "ACEITE: x",
+                                                  "subagent_type": "orq-executor"}}
+        c = self.ctx(self.bruto(json.dumps(d, ensure_ascii=False)))
+        self.assertIn('despacho "%s"' % nome, c)
+
+    def test_nome_completo_do_modelo_bate_com_a_etiqueta(self):
+        for modelo in ("claude-sonnet-5-5", "Sonnet", "sonnet[1m]"):
+            self.assertEqual(self.desp("[sonnet:front] cartao", model=modelo).stdout.strip(), "", modelo)
+
+    def test_papeis_que_nao_recebem_aviso(self):
+        # debug que so le pode ir pro leitor; coordenacao e revisao em opus sao a rota normal
+        casos = (("[haiku:debug] achar a causa", "orq-leitor", "haiku"),
+                 ("[opus:coordenacao] frente 1", "orq-mestre", "opus"),
+                 ("[fable:coordenacao] planta", "orq-engenheiro", "fable"),
+                 ("[opus:revisao] diff de dinheiro", "orquestrador:orq-revisor", "opus"))
+        for desc, papel, modelo in casos:
+            self.assertEqual(self.desp(desc, st=papel, model=modelo).stdout.strip(), "", desc)
+
+    def test_erro_interno_nao_vaza_no_hook(self):
+        entrada = json.dumps({"tool_name": "Agent", "tool_input": {
+            "description": "cartao", "prompt": "x", "subagent_type": "orq-executor"}})
+
+        class Entrada(object):
+            buffer = io.BytesIO(entrada.encode("utf-8"))
+
+        def explode(*a, **k):
+            raise RuntimeError("defeito de proposito")
+
+        with mock.patch.object(operarios, "avaliar_despacho", explode), \
+                mock.patch.object(operarios.sys, "stdin", Entrada()), \
+                mock.patch.object(operarios.sys, "stdout", io.StringIO()) as saida:
+            rc = operarios.cmd_despacho(mock.Mock(hook=True))
+            self.assertEqual((rc, saida.getvalue()), (0, ""))
+            Entrada.buffer = io.BytesIO(entrada.encode("utf-8"))
+            with self.assertRaises(RuntimeError):   # fora do hook o erro aparece, pra dar pra consertar
+                operarios.cmd_despacho(mock.Mock(hook=False))
+
+    def test_saida_e_ascii(self):
+        p = self.desp("cart" + chr(227) + "o", model=None)
+        p.stdout.encode("ascii")
 
 
 if __name__ == "__main__":

@@ -16,7 +16,7 @@ Não abra issue pública para vulnerabilidade.
 - O motor lê os transcripts locais do Claude Code e grava um registro local.
 - Ele não envia nada pela rede.
 - O registro passa por uma redação de segredos antes de ser gravado.
-- Os dois hooks do plugin só rodam o próprio motor. O de retomada só lê. O de atualização lê a configuração local de plugins do Claude Code e grava a data do último aviso.
+- Os três hooks do plugin só rodam o próprio motor. O de retomada só lê. O de despacho só avisa: não bloqueia a abertura do agente, não decide permissão, não altera a chamada e não grava o brief; guarda apenas, ao lado do registro, quais avisos já deu na sessão. O de atualização lê a configuração local de plugins do Claude Code e grava a data do último aviso.
 - O seu `settings.json` só é alterado pelo comando `atualizacao --ligar`, que o Claude roda depois que você aceita ligar a atualização automática. Ele acrescenta `autoUpdate: true` na entrada do marketplace (e, no app desktop, `FORCE_AUTOUPDATE_PLUGINS=1` em `env`) e guarda uma cópia do arquivo ao lado, em `settings.json.antes-do-orquestrador`.
 
 ## Fora do escopo

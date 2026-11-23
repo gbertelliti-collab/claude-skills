@@ -335,7 +335,7 @@ Claude Code's `skillOverrides` setting does not apply to plugin skills, so it is
 ### The engine
 
 ```bash
-python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|resumo|atualizar|atualizacao>
+python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
 python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -370,6 +370,7 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 | `ORQ_PROJECTS` | folder of the Claude Code transcripts | `~/.claude/projects` |
 | `ORQ_PRECOS` | JSON file that overrides prices in the `custo.py` table (same as `--precos`; `--mostrar-precos` prints the current table for you to save and edit) | built-in table, with the date it was read |
 | `ORQ_SEM_AVISO_ATUALIZACAO` | `1` silences the notice that auto-update is off | notifies (at most 3 times) |
+| `ORQ_SEM_AVISO_DESPACHO` | `1` silences the dispatch-time notice | notifies, never blocks |
 
 - **Agent names:** a plugin agent carries the plugin prefix, so the `subagent_type` is `orquestrador:orq-leitor`, `orquestrador:orq-executor` and so on. If your version of Claude Code shows the agents without a prefix, use the plain name.
 - **`PROJETOS.md`:** `provar-na-tela` and `bater-valores` read an optional `PROJETOS.md` in each skill's folder (how to start, log in and check each of your projects). Copy `PROJETOS.exemplo.md` and fill it in; without it, the skills use the project's README.
@@ -386,12 +387,14 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 
 **Automatic resume.** The plugin ships a session-start hook that only acts after the context compacts or the session is resumed: if the session had already dispatched workers, it hands the lead the list of those not logged yet (the same as `operarios.py retomar`). With no workers it prints nothing. It only reads local transcripts and needs Python 3 and `sh` (on Windows, Git Bash).
 
+**Dispatch-time notice.** Another hook looks at every worker of the skill at the moment the lead opens the agent and returns a short notice when the dispatch breaks the rules: no `model`, a description without `[model:type]`, a tag that says one model while `model` says another, a writing task handed to the reader or the reviewer, a brief with no ACEITE (acceptance check), Opus or Fable doing execution when the scorecard routes a smaller model, and an open experiment for that task type. The notice reaches the lead together with that call's response and **never blocks**: the worker runs anyway and the fix applies to the next dispatch. The last two notices are given once per session and type. An agent that is not part of the skill (`Explore`, an untagged `general-purpose`, agents from other plugins) passes untouched: the script does not even start Python. To check a dispatch by hand: `operarios.py despacho` with the call's JSON on standard input.
+
 ```text
 .claude-plugin/marketplace.json     the marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        the plugin (no version number: each commit is a version)
   agents/                           the 5 orq-* roles, each with its own color in the task list
-  hooks/                            resume after the context compacts; notice when auto-update is off
+  hooks/                            resume after the context compacts; notice when auto-update is off; dispatch-time notice
   skills/
     orquestrador/
       SKILL.md                      the lead's cycle
@@ -439,7 +442,7 @@ What changed on each date is in the [CHANGELOG](CHANGELOG.md). To contribute, se
 
 The repository carries only aggregated usage numbers: no real brief, no project name and no project table. The scorecard of whoever installs starts empty and learns from their own use. The log, the scorecard and the `PROJETOS.md` you fill in stay only on your machine (they are in `.gitignore`).
 
-The plugin's two hooks only read local files and do not use the network. The update hook reads Claude Code's plugin configuration to know whether auto-update is on and stores the date of the last notice; your `settings.json` is only changed when you accept, through the `atualizacao --ligar` command.
+The plugin's three hooks only read local files and do not use the network. The dispatch hook reads the log and the agent call (the brief is not stored anywhere) and keeps, next to the log, which notices it has already given in the session. The update hook reads Claude Code's plugin configuration to know whether auto-update is on and stores the date of the last notice; your `settings.json` is only changed when you accept, through the `atualizacao --ligar` command.
 
 ## License
 

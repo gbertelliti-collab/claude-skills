@@ -1754,6 +1754,157 @@ def _gravar_atomico(path, conteudo):
         raise
 
 
+_TAG_DESPACHO = re.compile(r"^\s*\[\s*([^:\]\s]+)\s*:\s*([^\]]+?)\s*\]")
+
+
+def _p_avisos_despacho():
+    return os.path.join(os.path.dirname(os.path.abspath(p_registro())), "despacho-avisos.json")
+
+
+def _ler_avisos_despacho():
+    try:
+        with io.open(_p_avisos_despacho(), encoding="utf-8") as f:
+            d = json.load(f)
+        return d if isinstance(d, dict) else {}
+    except Exception:
+        return {}
+
+
+def _ja_avisou(sessao, chave):
+    if not sessao:
+        return False
+    v = _ler_avisos_despacho().get(sessao)
+    return isinstance(v, list) and chave in v
+
+
+def _marcar_avisou(sessao, chave):
+    if not sessao:
+        return
+    try:
+        d = _ler_avisos_despacho()
+        v = d.get(sessao)
+        v = v if isinstance(v, list) else []
+        if chave not in v:
+            v.append(chave)
+        d.pop(sessao, None)
+        d[sessao] = v
+        while len(d) > 30:
+            d.pop(next(iter(d)))
+        _gravar_atomico(_p_avisos_despacho(), json.dumps(d, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def avaliar_despacho(d, regs=None):
+    """Avisos sobre o despacho de um operario. None = nao e despacho da skill; [] = tudo certo."""
+    if not isinstance(d, dict) or d.get("tool_name") not in ("Agent", "Task"):
+        return None
+    ti = d.get("tool_input")
+    if not isinstance(ti, dict):
+        return None
+    if (os.environ.get("ORQ_SEM_AVISO_DESPACHO") or "").strip().lower() in ("1", "true", "sim", "yes"):
+        return None
+    st = ti.get("subagent_type")
+    papel = st.rsplit(":", 1)[-1] if isinstance(st, str) else ""
+    e_orq = papel.startswith("orq-")
+    desc = ti.get("description")
+    desc = desc if isinstance(desc, str) else ""
+    m = _TAG_DESPACHO.match(desc)
+    tag_modelo = m.group(1).lower() if m else None
+    tag_tipo = m.group(2).strip().lower() if m else None
+    if not e_orq and (not m or tag_tipo not in TIPOS):
+        return None
+    mod = ti.get("model")
+    modelo = mod.lower() if isinstance(mod, str) and mod else None
+    prompt = ti.get("prompt")
+    prompt = prompt if isinstance(prompt, str) else ""
+    av = []
+    if modelo is None:
+        av.append("sem model: passe model explicito (haiku, sonnet ou opus) em todo despacho")
+    if not m:
+        av.append('descricao sem [modelo:tipo]: o registrar --agente e o conferir dependem dela '
+                  '(ex.: "[sonnet:front] cartao na lista")')
+    elif tag_tipo not in TIPOS:
+        av.append('tipo "%s" nao existe. Tipos: %s' % (tag_tipo, ", ".join(TIPOS)))
+    if tag_modelo and modelo and tag_modelo not in modelo:
+        av.append("a descricao diz %s e o model e %s: acerte um dos dois" % (tag_modelo, modelo))
+    escrita = tag_tipo in TIPOS_ESCRITA
+    if escrita and tag_tipo != "debug" and papel in ("orq-leitor", "orq-revisor"):
+        av.append("%s nao grava arquivo: tarefa de %s vai pra orq-executor" % (papel, tag_tipo))
+    # executor sem etiqueta valida: o papel ja diz que a tarefa escreve
+    if (escrita or (papel == "orq-executor" and tag_tipo not in TIPOS)) and "aceite" not in prompt.lower():
+        av.append("brief sem ACEITE: escreva o comando ou a checagem que voce vai rodar na conferencia")
+    efetivo = modelo if modelo is not None else tag_modelo
+    valido = tag_tipo in TIPOS
+    sessao = d.get("session_id")
+    sessao = sessao if isinstance(sessao, str) and sessao else sessao_atual()
+    grande = None
+    if efetivo:
+        grande = "opus" if "opus" in efetivo else ("fable" if "fable" in efetivo else None)
+    quer_f = bool(valido and escrita and grande)
+    quer_g = bool(valido and efetivo)
+    if quer_f or quer_g:
+        if regs is None:
+            regs = ler_registro()
+        rota = rota_tipo(regs, tag_tipo)
+        if quer_f and rota["modelo"] in ("haiku", "sonnet") and not _ja_avisou(sessao, "%s:%s" % (grande, tag_tipo)):
+            av.append("%s em execucao: a ficha manda %s brief %d pra %s. Modelo maior nao compra "
+                      "acerto: tarefa menor e brief nivel 3 primeiro. Se foi ordem do usuario ou "
+                      "regra do projeto, siga." % (grande, rota["modelo"], rota["brief"], tag_tipo))
+            _marcar_avisou(sessao, "%s:%s" % (grande, tag_tipo))
+        ex = rota.get("experimento")
+        if (quer_g and rota["modelo"] in ESCADA and rota["modelo"] in efetivo and ex
+                and ex["modelo"] in ESCADA
+                and ESCADA.index(ex["modelo"]) < ESCADA.index(rota["modelo"])
+                and not _ja_avisou(sessao, "exp:%s" % tag_tipo)):
+            av.append("experimento aberto em %s: %s brief %d (feitos %d de %d). Se a proxima tarefa "
+                      "do tipo for das mais mecanicas, despache nela e registre com --experimento."
+                      % (tag_tipo, ex["modelo"], ex["brief"], ex["feitos"], ex["meta"]))
+            _marcar_avisou(sessao, "exp:%s" % tag_tipo)
+    return av[:5]
+
+
+def _despacho(args):
+    bruto = getattr(sys.stdin, "buffer", None)
+    if bruto is not None:   # bytes: o encoding padrao do Windows quebra em texto com acento
+        texto = bruto.read().decode("utf-8", "replace")
+    else:
+        texto = sys.stdin.read()
+    try:
+        d = json.loads(texto) if texto.strip() else None
+    except ValueError:
+        d = None
+    av = avaliar_despacho(d)
+    if args.hook:
+        if av:
+            desc = ""
+            if isinstance(d, dict) and isinstance(d.get("tool_input"), dict):
+                x = d["tool_input"].get("description")
+                desc = x if isinstance(x, str) else ""
+            cab = 'orquestrador: aviso sobre o despacho "%s" (nao bloqueia; aplique no proximo):' % desc[:60]
+            txt = cab + "\n" + "\n".join("- " + a for a in av)
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                                     "additionalContext": txt}}))
+        return 0
+    if av is None:
+        print("nao e despacho da skill")
+    elif not av:
+        print("despacho ok")
+    else:
+        for a in av:
+            print(a)
+    return 0
+
+
+def cmd_despacho(args):
+    if args.hook:
+        try:
+            return _despacho(args)
+        except Exception:
+            return 0
+    return _despacho(args)
+
+
 def cmd_atualizar(args):
     path = p_ficha()
     if not path:
@@ -2233,6 +2384,10 @@ def montar_parser():
     t.add_argument("--json", action="store_true")
     t.add_argument("--hook", action="store_true", help="modo silencioso para hook de sessao")
     t.set_defaults(fn=cmd_retomar)
+
+    t = sub.add_parser("despacho", help="avalia o despacho de um operario (JSON do hook PreToolUse em stdin)")
+    t.add_argument("--hook", action="store_true", help="saida JSON para hook; nunca falha")
+    t.set_defaults(fn=cmd_despacho)
 
     u = sub.add_parser("resumo", help="1 linha com os registros da janela")
     u.add_argument("--desde", default="12h", help="Nh ou Nd (padrao 12h)")

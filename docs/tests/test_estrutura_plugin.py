@@ -221,6 +221,25 @@ class TestEstrutura(unittest.TestCase):
         self.assertIn(b"atualizacao --hook", data)
         self.assertNotIn(b"--ligar", data, "o hook nunca liga sozinho")
 
+    def test_13c_hook_de_despacho(self):
+        # antes de abrir um agente: so avisa. O script nunca pode bloquear nem decidir permissao.
+        entradas = carregar_hooks()["hooks"]["PreToolUse"]
+        self.assertEqual(len(entradas), 1)
+        e = entradas[0]
+        self.assertEqual(e.get("matcher"), "Agent|Task", "so a ferramenta de abrir agente; nunca Bash, Edit etc.")
+        self.assertIn("hooks/despacho.sh", e["hooks"][0]["command"])
+        self.assertLessEqual(e["hooks"][0].get("timeout", 60), 15, "hook de despacho nao pode segurar o agente")
+        data = ler_bytes(os.path.join(PLUGIN, "hooks", "despacho.sh"))
+        self.assertTrue(data.startswith(b"#!/bin/sh"), "shebang ausente")
+        self.assertNotIn(b"\r", data, "despacho.sh com CR (deve ser LF)")
+        self.assertIn(b"despacho --hook", data)
+        for proibido in (b"exit 2", b"permissionDecision", b"deny"):
+            self.assertNotIn(proibido, data, "o hook de despacho so avisa")
+        # todo caminho de saida do script e exit 0
+        saidas = [l.strip() for l in data.decode("ascii").splitlines() if l.strip().startswith("exit ")
+                  or " exit " in l]
+        self.assertTrue(saidas and all("exit 0" in l for l in saidas), saidas)
+
     def test_14_ascii_e_caminhos_de_skill(self):
         regex = r'\$\{CLAUDE_SKILL_DIR\}/([A-Za-z0-9_./-]+)'
         arquivos = [(nome, c) for nome, c in arquivos_skill().items()]

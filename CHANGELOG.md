@@ -2,6 +2,16 @@
 
 O plugin não tem número de versão: cada commit na `main` chega em quem instalou (veja "Receber atualizações" no README). As entradas abaixo são por data.
 
+## 2026-11-23: aviso na hora do despacho
+
+As regras de despacho (modelo explícito, etiqueta `[modelo:tipo]`, ACEITE no brief) só eram cobradas depois, pelo `conferir` e pelo `registrar`. Agora o plugin avisa no momento em que o chefe abre o operário.
+
+### Novo
+
+- **Hook de despacho (`hooks/despacho.sh`, PreToolUse da ferramenta de abrir agente).** Devolve ao chefe um aviso curto quando o despacho de um operário da skill sai sem `model`, sem `[modelo:tipo]`, com tipo que não existe, com etiqueta e `model` divergentes, com tarefa de escrita para o leitor ou o revisor, com brief sem ACEITE, com Opus ou Fable em execução contra a rota da ficha, ou com experimento aberto para o tipo (os dois últimos, uma vez por sessão e por tipo). Só avisa: nunca bloqueia, nunca decide permissão e nunca altera a chamada. Agente que não é da skill passa sem nada, e o script nem chama o Python para ele.
+- **`operarios.py despacho`.** O mesmo teste na mão: recebe o JSON da chamada na entrada padrão e lista os avisos; `--hook` é o formato que o Claude Code lê.
+- **`ORQ_SEM_AVISO_DESPACHO=1`** desliga o aviso.
+
 ## 2026-11-23: melhorias tiradas de nove dias de uso real
 
 O registro do autor tinha 267 tarefas em 12 projetos. A análise dele e dos transcripts dos operários mostrou onde a skill falhava; os números estão no README ("O que nove dias de uso mudaram no plugin") e em `fundamentos.md`.

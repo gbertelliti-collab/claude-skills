@@ -1160,7 +1160,7 @@ def cmd_registrar(args):
                     f.write(cab + "\n\n" + t + "\n")
         except OSError as e:
             print("AVISO: nao consegui salvar o exemplo: %s" % e, file=sys.stderr)
-    _avisos_registrar(rec, args)
+    _avisos_registrar(ordenado, args)
     print(linha)
     return 0
 
@@ -1195,6 +1195,19 @@ def _avisos_registrar(rec, args):
             print("AVISO: %s sem --erro e sem --licao: a ficha nao aprende com esta linha. "
                   "Erro do operario = --erro \"classe: detalhe\"; faltou no brief = --licao." % res,
                   file=sys.stderr)
+    except Exception:
+        pass
+    try:
+        if res == "de_primeira" and tipo in ("front", "design"):
+            print("AVISO: tela de primeira so vale se voce VIU o print (desktop e celular). O dono reprovou "
+                  "depois? reprovar --id %s --erro \"visual: <o que ele disse>\"." % rec.get("id", "<id>"),
+                  file=sys.stderr)
+    except Exception:
+        pass
+    try:
+        if tipo == "revisao" and res != "anulado" and getattr(args, "achados", None) is None:
+            print("AVISO: revisao sem --achados/--confirmados: o placar do revisor fica sem dado "
+                  "(0 e 0 tambem vale).", file=sys.stderr)
     except Exception:
         pass
 

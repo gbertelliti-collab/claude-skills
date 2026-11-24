@@ -2355,6 +2355,24 @@ class TestDesign(Base):
         self.assertIn("design -> opus brief 3", p.stdout)
         self.assertIn("\n  regra: design nao se fatia", p.stdout)
 
+    def test_registrar_tela_de_primeira_lembra_do_print(self):
+        for tipo, modelo in (("front", "sonnet"), ("design", "opus")):
+            p = self.reg(tipo, modelo, "de_primeira", brief=3)
+            rid = json.loads(p.stdout.strip().splitlines()[0])["id"]
+            self.assertIn("AVISO: tela de primeira so vale se voce VIU o print", p.stderr)
+            self.assertIn("reprovar --id %s --erro" % rid, p.stderr)
+        self.assertNotIn("tela de primeira", self.reg("edicao-logica", "sonnet", "de_primeira", brief=3).stderr)
+        p = self.reg("front", "sonnet", "corrigido", rodadas=1, brief=3, erros=["visual: botao torto"])
+        self.assertNotIn("tela de primeira", p.stderr)
+
+    def test_registrar_revisao_sem_placar_avisa(self):
+        self.assertIn("AVISO: revisao sem --achados/--confirmados", self.reg("revisao", "sonnet", "de_primeira").stderr)
+        p = self.run_op("registrar", "--tipo", "revisao", "--modelo", "sonnet", "--resultado", "de_primeira",
+                        "--rodadas", "0", "--brief", "2", "--achados", "0", "--confirmados", "0")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("revisao sem --achados", p.stderr)
+        self.assertNotIn("revisao sem --achados", self.reg("leitura", "haiku", "de_primeira").stderr)
+
     def test_nota_da_ficha_tem_regra(self):
         self.grava("design", "opus", "de_primeira", n=1, brief=3)
         self.assertEqual(self.run_op("atualizar").returncode, 0)

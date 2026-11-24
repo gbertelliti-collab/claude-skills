@@ -12,6 +12,7 @@ O registro dizia que as telas iam bem (14 de 16 de primeira nas 24 horas anterio
 - **Agente `orq-designer`** (Opus): autor de uma tela inteira. Abre a skill de design, trabalha com a referência na mão e prova por print em desktop e celular.
 - **`operarios.py reprovar --id X | --agente "descrição" --erro "classe: detalhe"`.** Marca numa tarefa já registrada que a entrega foi reprovada depois: `de_primeira` vira `corrigido`, soma uma rodada, grava o erro com classe e `reprovado: true`. Só aquela linha do registro muda; uma cópia fica em `registro.jsonl.antes-de-reprovar`.
 - **Avisos novos no hook de despacho:** design em Sonnet ou Haiku, design para o `orq-executor`, brief de design sem print, brief de design sem referência visual, e `front` com cara de design (uma vez por sessão).
+- **Dois avisos no `registrar`:** tela (`front` ou `design`) registrada de primeira lembra que só vale com o print visto e já mostra o comando `reprovar` com o id; revisão sem `--achados/--confirmados` avisa que o placar do revisor fica sem dado (em um dia de uso, só 3 de 8 revisões tinham placar).
 - **Seção "Design: a exceção ao delega tudo" no `SKILL.md`** e parágrafo correspondente no `modo-god.md`.
 
 ### Mudou

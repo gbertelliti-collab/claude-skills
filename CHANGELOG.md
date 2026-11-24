@@ -21,6 +21,11 @@ O registro dizia que as telas iam bem (14 de 16 de primeira nas 24 horas anterio
 
 - `front` passou a ser só ligar tela que já tem visual definido (componente, estado, dado). Os registros antigos de `front` não foram reclassificados.
 
+### Corrigido
+
+- **Registro com separador de linha Unicode sumia da ficha.** Uma linha do registro com U+2028, U+2029 ou U+0085 dentro de um campo era lida como duas linhas inválidas: a tarefa não entrava na ficha e o `reprovar` e o `reclassificar` não achavam o id. O `registrar` nunca grava esses caracteres; o defeito só aparecia em linha vinda de fora (edição à mão, outra ferramenta). O motor agora corta o registro só em quebra de linha comum.
+- **`custo.py` contava o `orq-designer` e o `orq-engenheiro` como "outros".** Os dois têm linha própria na tabela por papel.
+
 ## 2026-11-23: aviso na hora do despacho
 
 As regras de despacho (modelo explícito, etiqueta `[modelo:tipo]`, ACEITE no brief) só eram cobradas depois, pelo `conferir` e pelo `registrar`. Agora o plugin avisa no momento em que o chefe abre o operário.

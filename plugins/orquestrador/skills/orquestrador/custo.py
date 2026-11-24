@@ -91,7 +91,8 @@ MULT_ESCRITA_5M = 1.25
 MULT_ESCRITA_1H = 2.0
 
 BS = chr(92)
-PAPEIS = ["chefe", "orq-leitor", "orq-executor", "orq-revisor", "orq-mestre", "general-purpose", "outros"]
+PAPEIS = ["chefe", "orq-leitor", "orq-executor", "orq-designer", "orq-revisor", "orq-mestre", "orq-engenheiro",
+          "general-purpose", "outros"]
 NIVEIS = ["0", "1", "2", "3+"]
 
 

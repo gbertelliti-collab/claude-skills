@@ -218,6 +218,14 @@ class TestCusto(Base):
         self.assertEqual(d["por_papel"]["orq-revisor"]["agentes"], 1)
         self.assertEqual(d["por_papel"]["outros"]["agentes"], 0)
 
+    def test_designer_e_engenheiro_tem_papel_proprio(self):
+        self.agente([linha("m1")], {"agentType": "orquestrador:orq-designer", "spawnDepth": 1})
+        self.agente([linha("m2")], {"agentType": "orq-engenheiro", "spawnDepth": 1}, nome="agent-e")
+        d = self.js("--sessao", SID)
+        self.assertEqual(d["por_papel"]["orq-designer"]["agentes"], 1)
+        self.assertEqual(d["por_papel"]["orq-engenheiro"]["agentes"], 1)
+        self.assertEqual(d["por_papel"]["outros"]["agentes"], 0)
+
 
 class TestPrecos(Base):
     def arq(self, conteudo, nome="precos.json"):

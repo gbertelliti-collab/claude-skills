@@ -241,14 +241,26 @@ def _norm_reg(d):
     return r
 
 
+def _linhas_nl(texto):
+    """Linhas do registro com o fim preservado, cortando SO em \\n.
+
+    str.splitlines corta tambem em U+2028, U+2029, U+0085 e outros; um campo com um deles
+    partia o registro em dois pedacos de JSON invalido e a tarefa sumia da ficha."""
+    partes = texto.split("\n")
+    linhas = [p + "\n" for p in partes[:-1]]
+    if partes[-1]:
+        linhas.append(partes[-1])
+    return linhas
+
+
 def ler_registro_ex():
     p = p_registro()
     regs, ign = [], 0
     if not os.path.exists(p):
         return regs, ign
     try:
-        with io.open(p, "r", encoding="utf-8-sig", errors="replace") as f:
-            linhas = f.read().splitlines()
+        with io.open(p, "r", encoding="utf-8-sig", errors="replace", newline="") as f:
+            linhas = _linhas_nl(f.read())
     except OSError:
         return regs, ign
     for linha in linhas:
@@ -847,7 +859,7 @@ def cmd_reclassificar(args):
 
     def trabalho():
         with io.open(reg, "r", encoding="utf-8-sig", newline="") as f:
-            linhas = f.read().splitlines(keepends=True)
+            linhas = _linhas_nl(f.read())
         alvo = None
         for i, ln in enumerate(linhas):
             try:
@@ -933,7 +945,7 @@ def cmd_reprovar(args):
 
     def trabalho():
         with io.open(reg, "r", encoding="utf-8-sig", newline="") as f:
-            linhas = f.read().splitlines(keepends=True)
+            linhas = _linhas_nl(f.read())
         alvo = None
         for i, ln in enumerate(linhas):
             try:

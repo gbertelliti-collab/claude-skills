@@ -2595,6 +2595,35 @@ class TestReprovar(Base):
         self.assertNotEqual(antes, depois)
         self.assertNotIn("4/4", depois)
 
+    def test_separador_unicode_nao_parte_o_registro(self):
+        # U+2028 e U+0085 dentro de um campo: splitlines partia a linha e a tarefa sumia da ficha
+        def lin(i, tarefa, **kw):
+            d = {"id": i, "tipo": "front", "modelo": "sonnet", "resultado": "de_primeira",
+                 "rodadas": 0, "brief": 3, "tarefa": tarefa}
+            d.update(kw)
+            return json.dumps(d, ensure_ascii=False)
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        with io.open(self.registro, "w", encoding="utf-8", newline="") as f:
+            f.write(lin("aaaa1111", "antes") + "\n")
+            f.write(lin("sep02028", "com" + chr(0x2028) + "quebra") + "\n")
+            f.write(lin("sep00085", "com" + chr(0x85) + "quebra", resultado="corrigido", rodadas=1,
+                        erros=["a"], classes=["outro"]) + "\n")
+            f.write(lin("zzzz9999", "depois") + "\n")
+        st = json.loads(self.run_op("status").stdout)
+        self.assertEqual((st["n_registros"], st["linhas_ignoradas"]), (4, 0))
+        p = self.run_op("reprovar", "--id", "sep02028", "--erro", "visual: dono reprovou")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        p = self.run_op("reclassificar", "--id", "sep00085", "--classe", "visual")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        p = self.run_op("reprovar", "--id", "zzzz9999", "--erro", "visual: x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        ds = [json.loads(x) for x in self.le(self.registro).split("\n") if x]
+        self.assertEqual([d["id"] for d in ds], ["aaaa1111", "sep02028", "sep00085", "zzzz9999"])
+        self.assertTrue(ds[1]["reprovado"])
+        self.assertIn(chr(0x2028), ds[1]["tarefa"])
+        self.assertEqual(ds[2]["classes"], ["visual"])
+        self.assertEqual(ds[0]["resultado"], "de_primeira")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,7 @@ Voce e o AUTOR de UMA tela, do comeco ao fim. O dono vai abrir essa tela e julga
 
 Antes de escrever qualquer linha:
 1. Abra a skill de design que o brief apontar (ferramenta Skill). Se o brief nao apontar nenhuma e houver uma skill de design na lista (frontend, design, interface), abra a que mais serve. Siga o metodo dela, inclusive o portao de acabamento se ela tiver.
-2. Leia a referencia do brief: previa aprovada, DESIGN.md do projeto, tokens, print. Sem referencia no brief e sem DESIGN.md no projeto: devolva FALTA_CONTEXTO pedindo a referencia. Nao invente direcao visual.
+2. Leia a referencia do brief: previa aprovada, DESIGN.md do projeto, tokens, print. Projeto novo, sem DESIGN.md: a referencia e o projeto anterior do dono que o brief apontar (DESIGN.md, tokens, tela pronta). Sem nenhuma das duas: devolva FALTA_CONTEXTO pedindo a referencia. Nao invente direcao visual.
 3. Olhe as telas que ja existem no projeto (cabecalho, botao, cartao): a tela nova fala a mesma lingua.
 
 Regras:

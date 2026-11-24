@@ -1991,8 +1991,8 @@ def avaliar_despacho(d, regs=None):
             av.append("brief de design sem prova por print: o ACEITE e o print em desktop e celular, "
                       "visto pelo chefe ao lado da referencia")
         if not any(k in pn for k in ("referencia", "previa", "design.md", "mockup", "figma", "doop", "prototipo")):
-            av.append("brief de design sem referencia visual: aponte a previa aprovada, o DESIGN.md ou "
-                      "o print de referencia (caminho do arquivo)")
+            av.append("brief de design sem referencia visual: aponte a previa aprovada, o DESIGN.md (do projeto "
+                      "ou de um projeto anterior do dono) ou o print de referencia (caminho do arquivo)")
     if (tag_tipo == "front" and _RE_PARECE_DESIGN.search(dn + " " + pn[:800])
             and not _ja_avisou(sessao, "design:front")):
         av.append("parece design (tela que o dono vai julgar pelo olho) com etiqueta front: se for, o tipo "

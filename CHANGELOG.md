@@ -15,6 +15,8 @@ O registro dizia que as telas iam bem (14 de 16 de primeira nas 24 horas anterio
 - **Dois avisos no `registrar`:** tela (`front` ou `design`) registrada de primeira lembra que só vale com o print visto e já mostra o comando `reprovar` com o id; revisão sem `--achados/--confirmados` avisa que o placar do revisor fica sem dado (em um dia de uso, só 3 de 8 revisões tinham placar).
 - **Seção "Design: a exceção ao delega tudo" no `SKILL.md`** e parágrafo correspondente no `modo-god.md`.
 
+- **Referência vem dos projetos anteriores do dono.** Antes de desenhar, o chefe procura o que o dono já aprovou (`DESIGN.md`, tokens, telas prontas de um projeto parecido, notas de gosto) e leva o caminho no brief; o `orq-designer` aceita o `DESIGN.md` de um projeto anterior como referência de projeto novo. No caso que originou esta entrada, o site só melhorou depois que o dono pediu isso.
+
 ### Mudou
 
 - `front` passou a ser só ligar tela que já tem visual definido (componente, estado, dado). Os registros antigos de `front` não foram reclassificados.

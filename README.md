@@ -184,6 +184,7 @@ Em 24/11/2026 o registro dizia que as telas iam bem (14 de 16 tarefas de tela de
 | Tela que o dono julga pelo olho era registrada como `front`, e a ficha mandava Sonnet (e já propunha testar Haiku). | Tipo próprio, `design`: rota Opus, sem promoção para modelo menor e sem experimento. A ficha traz a linha `regra:`. |
 | O visual de uma tela foi dividido entre vários operários, e nenhum tinha a tela inteira na mão. | Um autor por tela: o chefe desenha a primeira com a skill de design aberta; com a direção aprovada, um `orq-designer` por tela. Operário Sonnet só liga dados depois do visual aprovado. |
 | A prévia aprovada foi portada "só pelo conteúdo e o tom". | A prévia é o contrato: portar é copiar o visual e provar lado a lado com print em desktop e celular. |
+| O site só melhorou quando o dono mandou olhar os outros projetos dele como referência. | Antes de desenhar, o chefe procura o que o dono já aprovou em projetos anteriores (`DESIGN.md`, tokens, telas prontas) e leva o caminho no brief. Projeto novo não começa do zero visual. |
 | O registro não tinha como saber que o dono reprovou depois do "pronto". | `operarios.py reprovar` tira o "de primeira" da tarefa e grava o erro com classe; três reprovações do mesmo tipo viram aviso na ficha. |
 | O chefe só descobria o erro de rota depois. | O hook de despacho avisa na hora: design em Sonnet ou Haiku, design para o `orq-executor`, brief de design sem print ou sem referência, e `front` com cara de design. |
 

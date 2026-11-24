@@ -17,9 +17,12 @@ O registro dizia que as telas iam bem (14 de 16 de primeira nas 24 horas anterio
 
 - **Referência vem dos projetos anteriores do dono.** Antes de desenhar, o chefe procura o que o dono já aprovou (`DESIGN.md`, tokens, telas prontas de um projeto parecido, notas de gosto) e leva o caminho no brief; o `orq-designer` aceita o `DESIGN.md` de um projeto anterior como referência de projeto novo. No caso que originou esta entrada, o site só melhorou depois que o dono pediu isso.
 
+- **`operarios.py reclassificar --id X --tipo <tipo>`.** Troca o tipo de um registro já gravado, para a tela antiga registrada como `front` que na verdade era design. O tipo anterior fica em `tipo_antes` e uma cópia do registro em `registro.jsonl.antes-de-reclassificar`. Pode vir junto com `--classe`. No registro do autor, 9 das últimas 20 telas contadas como acerto do Sonnet eram as do site reprovado; depois de trocar o tipo e reprovar, a ficha de design mostra 0 de 9 e a de `front` deixou de contá-las.
+
 ### Mudou
 
-- `front` passou a ser só ligar tela que já tem visual definido (componente, estado, dado). Os registros antigos de `front` não foram reclassificados.
+- `front` passou a ser só ligar tela que já tem visual definido (componente, estado, dado). Os registros antigos de `front` não mudam sozinhos: use o `reclassificar --tipo` nos que eram design.
+- Reprovação do dono não vira mais aviso `geral:` na ficha de outro tipo de tarefa. Ela fala de uma entrega daquele tipo e continua aparecendo na ficha dele.
 
 ### Corrigido
 

@@ -53,7 +53,7 @@ Medido no uso real (24/11/2026): um site inteiro saiu "de primeira" no registro 
 - ACEITE de design e print: desktop e celular, pagina inteira, visto pelo chefe ao lado da referencia. Build, lint, teste e medida por script provam que funciona, nao que ficou bom.
 - A 1a tela vai pro dono ANTES de replicar. So depois do "gostei" entram as outras telas e os operarios sonnet (tipo `front`: ligar dado, estado, repeticao do padrao pronto).
 - Portao de acabamento da skill de design reprovou: volta pro autor da tela. O brief nunca manda "anota e segue".
-- O dono reprovou depois do "pronto" (qualquer tipo, mas principalmente tela): `python "${CLAUDE_SKILL_DIR}/operarios.py" reprovar --agente "<descricao do despacho>" --erro "visual: <o que ele disse>"`. A tarefa deixa de contar como de primeira; sem isso a ficha continua achando que aquele caminho funciona.
+- O dono reprovou depois do "pronto" (qualquer tipo, mas principalmente tela): `python "${CLAUDE_SKILL_DIR}/operarios.py" reprovar --agente "<descricao do despacho>" --erro "visual: <o que ele disse>"`. A tarefa deixa de contar como de primeira; sem isso a ficha continua achando que aquele caminho funciona. Tela antiga registrada como `front` que era design: antes, `reclassificar --id <id> --tipo design`, pra reprovacao cair na ficha de design e nao na de ligar dados.
 - Continua delegado numa obra de design: pesquisa de referencia, fotos e licencas, servidor e dados, painel interno sem exigencia visual, teste, revisao.
 
 ## Economia de tokens

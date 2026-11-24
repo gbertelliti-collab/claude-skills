@@ -1750,6 +1750,63 @@ class TestClasseObrigatoria(Base):
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual(json.loads(self.le(self.registro).splitlines()[0])["classes"], ["teste"])
 
+    def test_troca_tipo(self):
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111", tarefa="t1")
+        self.grava("front", "sonnet", "de_primeira", id="bbbb2222", tarefa="t2")
+        antes = self.le(self.registro)
+        p = self.run_op("reclassificar", "--id", "aaaa1111", "--tipo", "design")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("tipo: front -> design", p.stdout)
+        linhas = self.le(self.registro).split("\n")
+        d = json.loads(linhas[0])
+        self.assertEqual((d["tipo"], d["tipo_antes"], d["resultado"], d["tarefa"]),
+                         ("design", "front", "de_primeira", "t1"))
+        self.assertEqual(linhas[1], antes.split("\n")[1])
+        self.assertEqual(self.le(self.registro + ".antes-de-reclassificar"), antes)
+
+    def test_troca_tipo_de_novo_nao_mexe(self):
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111")
+        self.assertEqual(self.run_op("reclassificar", "--id", "aaaa1111", "--tipo", "design").returncode, 0)
+        antes = self.le(self.registro)
+        p = self.run_op("reclassificar", "--id", "aaaa1111", "--tipo", "design")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("nada a mudar", p.stdout)
+        self.assertEqual(self.le(self.registro), antes)
+        self.assertEqual(self.run_op("reclassificar", "--id", "aaaa1111", "--tipo", "texto").returncode, 0)
+        d = json.loads(self.le(self.registro).split("\n")[0])
+        self.assertEqual((d["tipo"], d["tipo_antes"]), ("texto", "front"))
+
+    def test_tipo_e_classe_juntos(self):
+        self.grava("front", "sonnet", "corrigido", id="aaaa1111", erros=["x"], classes=["outro"])
+        p = self.run_op("reclassificar", "--id", "aaaa1111", "--tipo", "design", "--classe", "visual")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        d = json.loads(self.le(self.registro).split("\n")[0])
+        self.assertEqual((d["tipo"], d["classes"], d["erros"]), ("design", ["visual"], ["x"]))
+
+    def test_tipo_recusado_deixa_arquivo_igual(self):
+        self.grava("front", "sonnet", "corrigido", id="aaaa1111", erros=["x", "y"], classes=["outro", "outro"])
+        antes = self.le(self.registro)
+        for c in (("--id", "aaaa1111", "--tipo", "naoexiste"),
+                  ("--id", "naoexiste", "--tipo", "design"),
+                  ("--id", "aaaa1111", "--tipo", "design", "--classe", "visual")):
+            p = self.run_op("reclassificar", *c)
+            self.assertNotEqual(p.returncode, 0, c)
+            self.assertNotIn("Traceback", p.stderr)
+            self.assertEqual(self.le(self.registro), antes, c)
+
+    def test_troca_tipo_muda_as_duas_fichas(self):
+        for i in range(4):
+            self.grava("front", "sonnet", "de_primeira", brief=3, id="id00000%d" % i)
+        self.assertEqual(self.ficha_json("front")["stats"]["sonnet"]["n"], 4)
+        self.assertNotIn("sonnet", self.ficha_json("design")["stats"])
+        for i in range(3):
+            p = self.run_op("reclassificar", "--id", "id00000%d" % i, "--tipo", "design")
+            self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.ficha_json("front")["stats"]["sonnet"]["n"], 1)
+        st = self.ficha_json("design")["stats"]["sonnet"]
+        self.assertEqual((st["n"], st["de_primeira"]), (3, 3))
+        self.assertEqual(self.ficha_json("design")["modelo"], "opus")
+
 
 class TestPrimeiraEntrega(Base):
     DESC = "[sonnet:edicao-mecanica] tarefa de teste"
@@ -2623,6 +2680,23 @@ class TestReprovar(Base):
         self.assertIn(chr(0x2028), ds[1]["tarefa"])
         self.assertEqual(ds[2]["classes"], ["visual"])
         self.assertEqual(ds[0]["resultado"], "de_primeira")
+
+    def test_reprovacao_nao_vira_aviso_geral_de_outro_tipo(self):
+        det = "dono achou a tela feia no geral"
+        for i in range(4):
+            self.grava("design", "sonnet", "de_primeira", brief=3, id="des0000%d" % i)
+            self.grava("teste", "sonnet", "corrigido", brief=3, id="tes0000%d" % i,
+                       erros=["esqueceu o caso vazio"], classes=["borda"])
+        self.grava("edicao-logica", "sonnet", "de_primeira", brief=3, id="edl00001")
+        for i in range(4):
+            p = self.run_op("reprovar", "--id", "des0000%d" % i, "--erro", "visual: " + det)
+            self.assertEqual(p.returncode, 0, p.stderr)
+        outro = " ".join(self.ficha_json("edicao-logica")["avisos"])
+        self.assertNotIn(det, outro)
+        # o erro comum (nao reprovado) de outro tipo continua aparecendo como geral
+        self.assertIn("geral: esqueceu o caso vazio", outro)
+        # e no proprio tipo a reprovacao continua na ficha
+        self.assertIn("visual", " ".join(self.ficha_json("design")["avisos"]))
 
 
 if __name__ == "__main__":

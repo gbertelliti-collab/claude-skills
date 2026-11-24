@@ -849,8 +849,9 @@ def cmd_reclassificar(args):
             return 10
         return 0
     classes = args.classe or []
-    if not classes:
-        print("erro: --id exige ao menos um --classe", file=sys.stderr)
+    novo_tipo = getattr(args, "tipo", None)
+    if not classes and not novo_tipo:
+        print("erro: --id exige ao menos um --classe ou --tipo", file=sys.stderr)
         return 13
     reg = p_registro()
     if not os.path.exists(reg):
@@ -878,7 +879,7 @@ def cmd_reclassificar(args):
             er = [er]
         if not isinstance(er, list):
             er = []
-        if len(er) != len(classes):
+        if classes and len(er) != len(classes):
             atuais = d.get("classes") if isinstance(d.get("classes"), list) else []
             print("erro: o registro tem %d erro(s) e vieram %d classe(s):" % (len(er), len(classes)),
                   file=sys.stderr)
@@ -886,9 +887,19 @@ def cmd_reclassificar(args):
                 c = atuais[k] if k < len(atuais) and isinstance(atuais[k], str) else "outro"
                 print("  [%d] %s: %s" % (k + 1, c, e), file=sys.stderr)
             return 13
+        tipo_antes = d.get("tipo")
+        muda_tipo = bool(novo_tipo) and tipo_antes != novo_tipo
+        if not classes and not muda_tipo:
+            print("nada a mudar: %s ja e do tipo %s" % (args.id, novo_tipo))
+            return 0
         ln = linhas[i]
         fim = ln[len(ln.rstrip("\r\n")):]
-        d["classes"] = list(classes)
+        if classes:
+            d["classes"] = list(classes)
+        if muda_tipo:
+            d["tipo"] = novo_tipo
+            if isinstance(tipo_antes, str) and tipo_antes and "tipo_antes" not in d:
+                d["tipo_antes"] = tipo_antes
         shutil.copyfile(reg, reg + ".antes-de-reclassificar")
         linhas[i] = json.dumps(d, ensure_ascii=False) + fim
         _gravar_atomico(reg, "".join(linhas))
@@ -896,9 +907,12 @@ def cmd_reclassificar(args):
         if nr is None:
             nr = {"id": d.get("id"), "ts": d.get("ts") or "", "modelo": d.get("modelo"),
                   "tipo": d.get("tipo"), "projeto": d.get("projeto"),
-                  "classes": list(classes), "erros": [str(x) for x in er]}
+                  "classes": [str(x) for x in (d.get("classes") or [])] if isinstance(d.get("classes"), list)
+                  else [], "erros": [str(x) for x in er]}
         nr.setdefault("id", d.get("id"))
         print("\n".join(_bloco_reg(nr)))
+        if muda_tipo:
+            print("  tipo: %s -> %s" % (tipo_antes, novo_tipo))
         return 0
 
     try:
@@ -1372,6 +1386,9 @@ def avisos_par(regs, tipo, m):
                    and r["resultado"] != "anulado"][-JANELA_GERAL:]
     g = {}
     for r in modelo_regs:
+        # reprovacao do dono fala de UMA entrega daquele tipo: nao e tropeco geral do modelo
+        if r.get("reprovado") is True and r["tipo"] != tipo:
+            continue
         for k in set(_norm_erro(e) for e in r["erros"]):
             if k:
                 g[k] = g.get(k, 0) + 1
@@ -2530,12 +2547,16 @@ def montar_parser():
                                     "modelo real e tokens do transcript")
     r.set_defaults(fn=cmd_registrar)
 
-    rc = sub.add_parser("reclassificar", help="conserta a classe dos erros ja gravados")
+    rc = sub.add_parser("reclassificar", help="conserta a classe dos erros ou o tipo de um registro "
+                                              "ja gravado")
     g = rc.add_mutually_exclusive_group(required=True)
     g.add_argument("--listar", action="store_true", help="lista registros com erro de classe outro")
     g.add_argument("--id", help="id do registro a corrigir")
     rc.add_argument("--classe", action="append", choices=_NOMES_CLASSE,
                     help="repetivel; uma por erro do registro, na ordem")
+    rc.add_argument("--tipo", choices=TIPOS,
+                    help="com --id: troca o tipo do registro (ex.: front antigo que era design); "
+                         "o tipo anterior fica em tipo_antes")
     rc.set_defaults(fn=cmd_reclassificar)
 
     rp = sub.add_parser("reprovar", help="marca que uma entrega ja registrada foi reprovada depois "

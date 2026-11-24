@@ -30,7 +30,7 @@ from datetime import datetime, timedelta
 # Constantes ajustaveis
 # ----------------------------------------------------------------------------
 TIPOS = ["busca", "leitura", "pesquisa-web", "edicao-mecanica", "edicao-logica",
-         "teste", "dados-sql", "front", "debug", "texto", "revisao", "coordenacao", "outro"]
+         "teste", "dados-sql", "front", "design", "debug", "texto", "revisao", "coordenacao", "outro"]
 MODELOS = ["haiku", "sonnet", "opus", "fable", "chefe"]
 RESULTADOS = ["de_primeira", "corrigido", "escalado", "falhou", "anulado"]
 CLASSES_ERRO = {
@@ -70,6 +70,7 @@ PADRAO = {
     "teste": ("sonnet", 3),
     "dados-sql": ("sonnet", 3),
     "front": ("sonnet", 3),
+    "design": ("opus", 3),
     "debug": ("sonnet", 3),
     "texto": ("sonnet", 3),
     "revisao": ("sonnet", 2),
@@ -91,6 +92,13 @@ JANELA_GERAL = 60
 TIPOS_EXPERIMENTO = {"busca", "leitura", "pesquisa-web", "edicao-mecanica", "teste"}
 TIPOS_EXP_FORTE = {"front", "edicao-logica", "texto", "outro"}
 TIPOS_SEM_BARATO = {"revisao", "debug", "dados-sql", "coordenacao"}
+TIPOS_SEM_DESCIDA = {"design"}   # tela que o dono julga pelo olho: nunca promove nem experimenta modelo menor
+REGRA_TIPO = {
+    "design": ("design nao se fatia nem desce de modelo: o chefe desenha a 1a tela com a skill de design "
+               "aberta; se delegar, UM autor por tela (orq-designer, opus) com a referencia em maos e "
+               "prova por print em desktop e celular; operario sonnet so liga dados (tipo front) depois "
+               "do visual aprovado"),
+}
 TIPOS_ESCRITA = [t for t in TIPOS if t not in ("busca", "leitura", "pesquisa-web", "revisao", "coordenacao")]
 GRANDE_RESPOSTAS = 30   # respostas ate a 1a entrega a partir das quais a tarefa de escrita e "grande"
 PEQUENA_RESPOSTAS = 15  # abaixo disso a tarefa e candidata ao experimento no modelo mais barato
@@ -888,6 +896,101 @@ def cmd_reclassificar(args):
         return 13
 
 
+def cmd_reprovar(args):
+    if bool(args.id) == bool(args.agente):
+        print("erro: passe --id ou --agente (um dos dois, nao os dois). Nada foi alterado.",
+              file=sys.stderr)
+        return 13
+    erros_in = args.erro or []
+    if not erros_in:
+        print("erro: reprovar exige ao menos um --erro \"classe: detalhe\". Nada foi alterado.",
+              file=sys.stderr)
+        return 13
+    for e in erros_in:
+        if _classe_do_erro(e)[0] is None:
+            print('erro: --erro sem classe: "%s"' % e[:60], file=sys.stderr)
+            print('use "classe: detalhe", um erro por --erro. Classes:', file=sys.stderr)
+            for c, v in CLASSES_ERRO.items():
+                print("  %s: %s" % (c, v[0]), file=sys.stderr)
+            print('"outro: detalhe" so quando nenhuma couber. Nada foi alterado.', file=sys.stderr)
+            return 13
+    novos, novas_classes = [], []
+    for e in erros_in:
+        classe, det = _classe_do_erro(e)
+        t, _cls = redigir(det)
+        novos.append(_trunc(_limpar(t), MAX_ERRO))
+        novas_classes.append(classe)
+    if args.id:
+        alvo_txt = "id %s" % args.id
+    else:
+        alvo_txt = "tarefa %s" % args.agente
+        t, _cls = redigir(args.agente)
+        agente_limpo = _trunc(_limpar(t), MAX_TAREFA)
+    reg = p_registro()
+    if not os.path.exists(reg):
+        print("erro: nao achei registro com %s" % alvo_txt, file=sys.stderr)
+        return 13
+
+    def trabalho():
+        with io.open(reg, "r", encoding="utf-8-sig", newline="") as f:
+            linhas = f.read().splitlines(keepends=True)
+        alvo = None
+        for i, ln in enumerate(linhas):
+            try:
+                d = json.loads(ln)
+            except Exception:
+                continue
+            if not isinstance(d, dict):
+                continue
+            if args.id:
+                if d.get("id") == args.id:
+                    alvo = (i, d)
+                    break
+            elif d.get("tarefa") in (args.agente, agente_limpo):
+                alvo = (i, d)      # sem break: vale o mais recente
+        if alvo is None:
+            print("erro: nao achei registro com %s" % alvo_txt, file=sys.stderr)
+            return 13
+        i, d = alvo
+        antes = d.get("resultado")
+        if antes == "anulado":
+            print("erro: tarefa anulada nao tem entrega pra reprovar", file=sys.stderr)
+            return 13
+        rod = d.get("rodadas")
+        rod = rod if isinstance(rod, int) and not isinstance(rod, bool) else 0
+        er = d.get("erros")
+        if isinstance(er, str):
+            er = [er]
+        er = list(er) if isinstance(er, list) else []
+        cl = d.get("classes")
+        cl = list(cl) if isinstance(cl, list) else []
+        for c in novas_classes:
+            if c not in cl:
+                cl.append(c)
+        if antes == "de_primeira":
+            d["resultado"] = "corrigido"
+        d["rodadas"] = rod + 1
+        d["erros"] = er + novos
+        d["classes"] = cl
+        d["reprovado"] = True
+        ln = linhas[i]
+        fim = ln[len(ln.rstrip("\r\n")):]
+        shutil.copyfile(reg, reg + ".antes-de-reprovar")
+        nova = json.dumps(d, ensure_ascii=False)
+        linhas[i] = nova + fim
+        _gravar_atomico(reg, "".join(linhas))
+        print(nova)
+        print("reprovado: %s %s %s %s -> %s (rodadas %d)" % (
+            d.get("id", "-"), d.get("tipo"), d.get("modelo"), antes, d["resultado"], d["rodadas"]))
+        return 0
+
+    try:
+        return _com_trava(reg + ".trava", trabalho)
+    except (OSError, UnicodeError) as e:
+        print("erro: nao consegui reescrever o registro: %s. Nada foi alterado." % e, file=sys.stderr)
+        return 13
+
+
 def cmd_registrar(args):
     if args.brief < 1 or args.brief > 3:
         print("erro: --brief deve ser 1, 2 ou 3", file=sys.stderr)
@@ -1357,7 +1460,7 @@ def rota_tipo(regs, tipo, agora=None):
     acum = []
 
     # 1) promocao
-    for m in ESCADA[:idx]:
+    for m in ([] if tipo in TIPOS_SEM_DESCIDA else ESCADA[:idx]):
         for L in (1, 2, 3):
             b = _balde(regs, tipo, m, L)
             s = _bstats(b)
@@ -1394,6 +1497,8 @@ def rota_tipo(regs, tipo, agora=None):
         abaixo = "opus"
     elif modelo != "haiku":
         abaixo = ESCADA[ESCADA.index(modelo) - 1]
+    if tipo in TIPOS_SEM_DESCIDA:
+        abaixo = None
     if abaixo and tipo not in TIPOS_SEM_BARATO:
         b3 = _balde(regs, tipo, abaixo, 3)
         cl = _classe(b3)
@@ -1420,7 +1525,8 @@ def rota_tipo(regs, tipo, agora=None):
                            "motivo": "%s acerta %d/%d de primeira (%s): testar %s na tarefa "
                                      "mais mecanica do tipo" % (
                                          modelo, sf["de_primeira"], sf["n"], sf["de"], abaixo)}
-    if EXPERIMENTAR_BRIEF_MENOR and experimento is None and modelo != "chefe" and brief and brief >= 2:
+    if (EXPERIMENTAR_BRIEF_MENOR and experimento is None and modelo != "chefe" and brief and brief >= 2
+            and tipo not in TIPOS_SEM_DESCIDA):
         b = _balde(regs, tipo, modelo, brief)
         s = _bstats(b)
         if (s["n"] >= BRIEF_MENOR_N and s["p1"] >= BRIEF_MENOR_TAXA
@@ -1443,6 +1549,7 @@ def rota_tipo(regs, tipo, agora=None):
         "effort": effort,
         "motivo": "; ".join(motivos),
         "experimento": experimento,
+        "regra": REGRA_TIPO.get(tipo),
         "avisos": avisos_rota(regs, tipo, modelo),
         "licoes": licoes_par(regs, tipo, modelo),
         "faltou": faltou_par(regs, tipo, modelo),
@@ -1509,6 +1616,8 @@ def texto_rota(r):
         if r["effort"]:
             cab += " effort %s" % r["effort"]
         L = [cab + " (%s)" % r["motivo"]]
+    if r.get("regra"):
+        L.append("  regra: " + r["regra"])
     for a in r["avisos"]:
         L.append("  " + a)
     if r["do_brief"][0] >= 2:
@@ -1695,7 +1804,7 @@ def gerar_bloco(regs):
             rota = "%s b%d" % (r["modelo"], r["brief"])
             if r["effort"]:
                 rota += " %s" % r["effort"]
-        av = _limpar("; ".join(r["avisos"])) or "-"
+        av = _limpar("; ".join((["regra: " + r["regra"]] if r.get("regra") else []) + r["avisos"])) or "-"
         L.append("| %s | %s | %s | %s | %s | %s |" % (
             r["tipo"], _limpar(rota), _limpar(_cel(r["stats"], "haiku")),
             _limpar(_cel(r["stats"], "sonnet")), _limpar(_cel(r["stats"], "opus")), av))
@@ -1795,6 +1904,17 @@ def _marcar_avisou(sessao, chave):
         pass
 
 
+_RE_PARECE_DESIGN = re.compile(
+    r"\b(landing|home ?page|pagina inicial|tela inicial|pagina de vendas?|hero|redesenh\w*|redesign|"
+    r"identidade visual|acabamento visual|visual novo|novo visual|layout novo|novo layout|"
+    r"tela nova|nova tela|pagina nova|nova pagina)\b")
+
+
+def _sem_acento(s):
+    return "".join(ch for ch in unicodedata.normalize("NFD", (s or "").lower())
+                   if unicodedata.category(ch) != "Mn")
+
+
 def avaliar_despacho(d, regs=None):
     """Avisos sobre o despacho de um operario. None = nao e despacho da skill; [] = tudo certo."""
     if not isinstance(d, dict) or d.get("tool_name") not in ("Agent", "Task"):
@@ -1830,7 +1950,8 @@ def avaliar_despacho(d, regs=None):
         av.append("a descricao diz %s e o model e %s: acerte um dos dois" % (tag_modelo, modelo))
     escrita = tag_tipo in TIPOS_ESCRITA
     if escrita and tag_tipo != "debug" and papel in ("orq-leitor", "orq-revisor"):
-        av.append("%s nao grava arquivo: tarefa de %s vai pra orq-executor" % (papel, tag_tipo))
+        av.append("%s nao grava arquivo: tarefa de %s vai pra %s" % (
+            papel, tag_tipo, "orq-designer" if tag_tipo == "design" else "orq-executor"))
     # executor sem etiqueta valida: o papel ja diz que a tarefa escreve
     if (escrita or (papel == "orq-executor" and tag_tipo not in TIPOS)) and "aceite" not in prompt.lower():
         av.append("brief sem ACEITE: escreva o comando ou a checagem que voce vai rodar na conferencia")
@@ -1838,6 +1959,33 @@ def avaliar_despacho(d, regs=None):
     valido = tag_tipo in TIPOS
     sessao = d.get("session_id")
     sessao = sessao if isinstance(sessao, str) and sessao else sessao_atual()
+    pn = _sem_acento(prompt)
+    dn = _sem_acento(desc)
+    if tag_tipo == "design":
+        fam = None
+        for f in ("haiku", "sonnet", "opus", "fable"):
+            if efetivo and f in efetivo:
+                fam = f
+                break
+        if fam in ("haiku", "sonnet"):
+            av.append("design em %s: tela que o dono julga pelo olho nao desce de modelo. O chefe desenha "
+                      "com a skill de design aberta, ou UM operario opus por tela (orq-designer)" % fam)
+        if papel == "orq-executor":
+            av.append("orq-executor nao abre skill de design: design vai pra orq-designer (papel nao "
+                      "existe na sessao: general-purpose opus com a ordem de ler o agents/orq-designer.md "
+                      "do plugin orquestrador)")
+        if not any(k in pn for k in ("print", "screenshot", "captura")):
+            av.append("brief de design sem prova por print: o ACEITE e o print em desktop e celular, "
+                      "visto pelo chefe ao lado da referencia")
+        if not any(k in pn for k in ("referencia", "previa", "design.md", "mockup", "figma", "doop", "prototipo")):
+            av.append("brief de design sem referencia visual: aponte a previa aprovada, o DESIGN.md ou "
+                      "o print de referencia (caminho do arquivo)")
+    if (tag_tipo == "front" and _RE_PARECE_DESIGN.search(dn + " " + pn[:800])
+            and not _ja_avisou(sessao, "design:front")):
+        av.append("parece design (tela que o dono vai julgar pelo olho) com etiqueta front: se for, o tipo "
+                  "e design e a rota e outra (ficha --tipo design); front e ligar dados numa tela com o "
+                  "visual ja aprovado")
+        _marcar_avisou(sessao, "design:front")
     grande = None
     if efetivo:
         grande = "opus" if "opus" in efetivo else ("fable" if "fable" in efetivo else None)
@@ -1861,7 +2009,7 @@ def avaliar_despacho(d, regs=None):
                       "do tipo for das mais mecanicas, despache nela e registre com --experimento."
                       % (tag_tipo, ex["modelo"], ex["brief"], ex["feitos"], ex["meta"]))
             _marcar_avisou(sessao, "exp:%s" % tag_tipo)
-    return av[:5]
+    return av[:6]
 
 
 def _despacho(args):
@@ -2364,6 +2512,14 @@ def montar_parser():
     rc.add_argument("--classe", action="append", choices=_NOMES_CLASSE,
                     help="repetivel; uma por erro do registro, na ordem")
     rc.set_defaults(fn=cmd_reclassificar)
+
+    rp = sub.add_parser("reprovar", help="marca que uma entrega ja registrada foi reprovada depois "
+                                         "(dono viu e nao aprovou)")
+    rp.add_argument("--id", help="id do registro")
+    rp.add_argument("--agente", help="descricao do despacho (campo tarefa); vale o mais recente")
+    rp.add_argument("--erro", action="append",
+                    help='"classe: detalhe", repetivel; ao menos um')
+    rp.set_defaults(fn=cmd_reprovar)
 
     f = sub.add_parser("ficha", help="rota recomendada por tipo (fable e aceito no registro e "
                                      "aparece nas stats, mas nao entra na rota)")

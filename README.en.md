@@ -175,6 +175,18 @@ The analysis was done on 2026-11-23, with the log at 267 tasks across 12 project
 
 Size is counted up to the first delivery because a fix adds replies to the same transcript and would make the task that failed look bigger. Brief length did not predict errors: longer briefs passed more often.
 
+### Design is the exception
+
+On 2026-11-24 the log said screens were going well (14 of 16 screen tasks passed on the first check in the previous 24 hours) and the owner found the look of a whole site poor. Both were right, because they measured different things: "first check" meant passing the acceptance check, and that check was build, tests and scripted measurements. The preview the owner had approved was rebuilt by 13 Sonnet workers, one piece each, from a text brief, with no design skill loaded. The plugin now treats design like this:
+
+| what use showed | what the plugin does now |
+|---|---|
+| A screen the owner judges by eye was logged as `front`, and the scorecard routed Sonnet (and was already proposing a Haiku trial). | Its own type, `design`: Opus route, no promotion to a smaller model and no experiment. The scorecard shows a `regra:` (rule) line. |
+| The look of one screen was split among several workers, and none of them held the whole screen. | One author per screen: the lead designs the first one with the design skill loaded; once the direction is approved, one `orq-designer` per screen. Sonnet workers only wire data after the look is approved. |
+| The approved preview was ported "for content and tone only". | The preview is the contract: porting means copying the look and proving it side by side with screenshots on desktop and phone. |
+| The log had no way to know the owner rejected it after "done". | `operarios.py reprovar` removes the "first check" from the task and stores the error with its class; three rejections of the same kind become a scorecard warning. |
+| The lead only found the routing mistake afterwards. | The dispatch hook warns on the spot: design on Sonnet or Haiku, design sent to `orq-executor`, a design brief with no screenshot or no reference, and a `front` task that looks like design. |
+
 > [!NOTE]
 > Read the numbers at the size they have: one user and a few days of use. "First check" means it passed the lead's first check, and the lead runs the acceptance check itself. Cost is tokens weighted by each model's API price, not an invoice. Your scorecard starts empty and will reach your own numbers.
 
@@ -203,6 +215,7 @@ Size is counted up to the first delivery because a fix adds replies to the same 
 |---|---|---|---|
 | `orq-leitor` | Haiku | search, reading, research with sources | edit files |
 | `orq-executor` | Sonnet | code, tests, data scripts, screens, writing, only in the files of the scope | decide design, leave the scope |
+| `orq-designer` | Opus | one whole screen the owner judges by eye: loads the design skill and proves it with screenshots | split the screen, invent a visual direction with no reference |
 | `orq-revisor` | Sonnet (Opus for money and security) | review another's delivery and give a verdict | fix |
 | `orq-mestre` | Opus | run a whole workstream in god mode | change the contract between workstreams |
 | `orq-engenheiro` | Fable | the 3 visits of god mode | dispatch workers, edit code |
@@ -335,7 +348,7 @@ Claude Code's `skillOverrides` setting does not apply to plugin skills, so it is
 ### The engine
 
 ```bash
-python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
+python <skill folder>/operarios.py <status|ficha|registrar|reclassificar|reprovar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
 python <skill folder>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -393,7 +406,7 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 .claude-plugin/marketplace.json     the marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        the plugin (no version number: each commit is a version)
-  agents/                           the 5 orq-* roles, each with its own color in the task list
+  agents/                           the 6 orq-* roles, each with its own color in the task list
   hooks/                            resume after the context compacts; notice when auto-update is off; dispatch-time notice
   skills/
     orquestrador/

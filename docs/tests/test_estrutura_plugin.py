@@ -13,7 +13,7 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 PLUGIN = os.path.join(RAIZ, "plugins", "orquestrador")
 
 SKILLS = {"orquestrador", "auditoria-adversarial", "provar-na-tela", "bater-valores", "placar"}
-AGENTES = {"orq-leitor", "orq-executor", "orq-revisor", "orq-mestre", "orq-engenheiro"}
+AGENTES = {"orq-leitor", "orq-executor", "orq-revisor", "orq-mestre", "orq-engenheiro", "orq-designer"}
 MODELOS = {"haiku", "sonnet", "opus", "fable"}
 CORES = {"red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"}
 EVENTOS = {
@@ -163,6 +163,18 @@ class TestEstrutura(unittest.TestCase):
                 self.assertTrue(fm.get("description"), "description vazia")
                 self.assertIn(fm.get("model"), MODELOS)
                 self.assertIn(fm.get("color"), CORES)
+
+    def test_09b_so_o_mestre_abre_agente(self):
+        # 3 andares: operario nao abre agente. Quem lista `tools` nao lista Agent; quem herda tudo nega.
+        for nome, caminho in sorted(arquivos_agente().items()):
+            if nome == "orq-mestre":
+                continue
+            with self.subTest(agente=nome):
+                fm = frontmatter(ler(caminho))
+                if fm.get("tools"):
+                    self.assertNotIn("Agent", [t.strip() for t in fm["tools"].split(",")])
+                else:
+                    self.assertIn("Agent", [t.strip() for t in (fm.get("disallowedTools") or "").split(",")])
 
     def test_10_chaves_proibidas_em_agente(self):
         for nome, caminho in sorted(arquivos_agente().items()):

@@ -2,6 +2,22 @@
 
 O plugin não tem número de versão: cada commit na `main` chega em quem instalou (veja "Receber atualizações" no README). As entradas abaixo são por data.
 
+## 2026-11-24: design tem tipo, autor e prova próprios
+
+O registro dizia que as telas iam bem (14 de 16 de primeira nas 24 horas anteriores) e o dono achou o visual de um site inteiro ruim: "de primeira" media o aceite de build e teste, não a tela. A prévia aprovada tinha sido refeita por 13 operários Sonnet, um pedaço cada, sem skill de design. Detalhe no README ("Design é a exceção").
+
+### Novo
+
+- **Tipo `design`** (tela que o dono julga pelo olho: página nova, redesenho, acabamento, portar prévia aprovada). Rota Opus brief 3, sem promoção para modelo menor e sem experimento. A ficha e a nota trazem a linha `regra:`.
+- **Agente `orq-designer`** (Opus): autor de uma tela inteira. Abre a skill de design, trabalha com a referência na mão e prova por print em desktop e celular.
+- **`operarios.py reprovar --id X | --agente "descrição" --erro "classe: detalhe"`.** Marca numa tarefa já registrada que a entrega foi reprovada depois: `de_primeira` vira `corrigido`, soma uma rodada, grava o erro com classe e `reprovado: true`. Só aquela linha do registro muda; uma cópia fica em `registro.jsonl.antes-de-reprovar`.
+- **Avisos novos no hook de despacho:** design em Sonnet ou Haiku, design para o `orq-executor`, brief de design sem print, brief de design sem referência visual, e `front` com cara de design (uma vez por sessão).
+- **Seção "Design: a exceção ao delega tudo" no `SKILL.md`** e parágrafo correspondente no `modo-god.md`.
+
+### Mudou
+
+- `front` passou a ser só ligar tela que já tem visual definido (componente, estado, dado). Os registros antigos de `front` não foram reclassificados.
+
 ## 2026-11-23: aviso na hora do despacho
 
 As regras de despacho (modelo explícito, etiqueta `[modelo:tipo]`, ACEITE no brief) só eram cobradas depois, pelo `conferir` e pelo `registrar`. Agora o plugin avisa no momento em que o chefe abre o operário.

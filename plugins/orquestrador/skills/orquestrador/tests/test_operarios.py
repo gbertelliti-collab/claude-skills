@@ -2330,5 +2330,253 @@ class TestDespacho(Base):
         p.stdout.encode("ascii")
 
 
+class TestDesign(Base):
+    BOM = "ACEITE: print em desktop e celular ao lado da previa aprovada"
+
+    def desp(self, desc, st="orq-designer", model="opus", prompt=None, sid=None):
+        ti = {"description": desc, "prompt": self.BOM if prompt is None else prompt,
+              "subagent_type": st}
+        if model is not None:
+            ti["model"] = model
+        d = {"hook_event_name": "PreToolUse", "tool_name": "Agent", "tool_input": ti}
+        if sid:
+            d["session_id"] = sid
+        p = subprocess.run([sys.executable, SCRIPT, "despacho", "--hook"], input=json.dumps(d),
+                           env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertNotIn("Traceback", p.stderr)
+        if not p.stdout.strip():
+            return ""
+        return json.loads(p.stdout)["hookSpecificOutput"]["additionalContext"]
+
+    def test_ficha_texto_tem_regra(self):
+        p = self.run_op("ficha", "--tipo", "design")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIn("design -> opus brief 3", p.stdout)
+        self.assertIn("\n  regra: design nao se fatia", p.stdout)
+
+    def test_nota_da_ficha_tem_regra(self):
+        self.grava("design", "opus", "de_primeira", n=1, brief=3)
+        self.assertEqual(self.run_op("atualizar").returncode, 0)
+        with io.open(self.ficha, encoding="utf-8") as f:
+            nota = f.read()
+        linha = [l for l in nota.splitlines() if l.startswith("| design |")]
+        self.assertEqual(len(linha), 1, nota[:400])
+        self.assertIn("regra: design nao se fatia", linha[0])
+        self.assertNotIn("regra:", [l for l in nota.splitlines() if l.startswith("| front |")][0])
+
+    def test_ficha_json_vazio(self):
+        r = self.ficha_json("design")
+        self.assertEqual((r["modelo"], r["brief"]), ("opus", 3))
+        self.assertIsNone(r["experimento"])
+        self.assertTrue(r["regra"].startswith("design nao se fatia"))
+
+    def test_sonnet_de_primeira_nao_promove(self):
+        self.grava("design", "sonnet", "de_primeira", n=8, brief=3)
+        r = self.ficha_json("design")
+        self.assertEqual(r["modelo"], "opus")
+        self.assertIsNone(r["experimento"])
+
+    def test_opus_de_primeira_nao_propoe_sonnet(self):
+        self.grava("design", "opus", "de_primeira", n=8, brief=3)
+        r = self.ficha_json("design")
+        self.assertEqual(r["modelo"], "opus")
+        self.assertIsNone(r["experimento"])
+
+    def test_front_sem_regra(self):
+        self.assertIsNone(self.ficha_json("front")["regra"])
+
+    def test_aviso_h_sonnet(self):
+        c = self.desp("[sonnet:design] inicio do site", model="sonnet")
+        self.assertIn("design em sonnet", c)
+        self.assertEqual(c.count("\n- "), 1)
+
+    def test_aviso_h2_executor(self):
+        c = self.desp("[opus:design] inicio", st="orq-executor")
+        self.assertIn("orq-executor nao abre skill de design", c)
+        self.assertEqual(c.count("\n- "), 1)
+
+    def test_avisos_i_e_i2(self):
+        c = self.desp("[opus:design] inicio", prompt="ACEITE: npm run build")
+        self.assertIn("sem prova por print", c)
+        self.assertIn("sem referencia visual", c)
+        self.assertEqual(c.count("\n- "), 2)
+
+    def test_bom_fica_calado(self):
+        self.assertEqual(self.desp("[opus:design] inicio"), "")
+        self.assertEqual(self.desp("[fable:design] inicio", model="fable"), "")
+
+    def test_leitor_design_vai_pra_designer(self):
+        c = self.desp("[opus:design] inicio", st="orq-leitor")
+        self.assertIn("vai pra orq-designer", c)
+        c2 = self.desp("[sonnet:front] cartao", st="orq-leitor", model="sonnet")
+        self.assertIn("vai pra orq-executor", c2)
+
+    def test_front_parece_design_uma_vez_por_sessao(self):
+        d = "[sonnet:front] A4 pagina inicial estatica e responsiva"
+        kw = dict(st="orq-executor", model="sonnet")
+        self.assertIn("parece design", self.desp(d, sid="s1", **kw))
+        self.assertNotIn("parece design", self.desp(d, sid="s1", **kw))
+        self.assertIn("parece design", self.desp(d, sid="s2", **kw))
+
+    def test_front_comum_sem_aviso_j(self):
+        kw = dict(st="orq-executor", model="sonnet")
+        c = self.desp("[sonnet:front] cartao na lista de clientes",
+                      prompt="OBJETIVO: ligar o campo saldo ACEITE: npm test", **kw)
+        self.assertNotIn("parece design", c)
+        c = self.desp("[sonnet:front] ajuste",
+                      prompt="ACEITE: x. Texto: a homologacao do heroi", **kw)
+        self.assertNotIn("parece design", c)
+        # tela comum que so cita responsivo ou bonito nao e design
+        for texto in ("ACEITE: teste. Tela responsiva ja pronta", "ACEITE: x. O dashboard bonito ja existe",
+                      "ACEITE: x. O responsavel pelo home office"):
+            self.assertNotIn("parece design", self.desp("[sonnet:front] ligar campo", prompt=texto, **kw), texto)
+
+    def test_front_parece_design_termos(self):
+        kw = dict(st="orq-executor", model="sonnet")
+        termos = ("landing page do produto", "tela inicial do app", "pagina de vendas", "novo layout do painel",
+                  "nova tela de cadastro", "redesenhar o cabecalho", "acabamento visual")
+        for i, t in enumerate(termos):
+            c = self.desp("[sonnet:front] " + t, prompt="ACEITE: x", sid="t%d" % i, **kw)
+            self.assertIn("parece design", c, t)
+
+    def test_poucos_registros_no_modelo_menor_nao_abrem_experimento(self):
+        # sem a guarda, 2 registros de design em sonnet (sem prova com brief 3) viravam experimento
+        self.grava("design", "sonnet", "de_primeira", n=2, brief=2)
+        r = self.ficha_json("design")
+        self.assertEqual(r["modelo"], "opus")
+        self.assertIsNone(r["experimento"])
+
+    def test_opus_reprovado_cai_no_chefe(self):
+        self.grava("design", "opus", "falhou", n=3, brief=3)
+        r = self.ficha_json("design")
+        self.assertEqual(r["modelo"], "chefe")
+        self.assertIsNone(r["experimento"])
+
+
+class TestReprovar(Base):
+    def linhas(self):
+        return self.le(self.registro).splitlines(True)
+
+    def test_de_primeira_vira_corrigido(self):
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111", tarefa="t1", licao="L")
+        p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", "visual: dono reprovou o inicio")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        d = json.loads(self.linhas()[0])
+        self.assertEqual((d["resultado"], d["rodadas"], d["classes"], d["reprovado"]),
+                         ("corrigido", 1, ["visual"], True))
+        self.assertEqual(d["erros"], ["dono reprovou o inicio"])
+        self.assertEqual(d["licao"], "L")
+        self.assertIn("reprovado: aaaa1111 front sonnet de_primeira -> corrigido (rodadas 1)", p.stdout)
+
+    def test_agente_pega_o_mais_recente(self):
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111", tarefa="mesma")
+        self.grava("front", "sonnet", "de_primeira", id="bbbb2222", tarefa="mesma")
+        antes = self.linhas()
+        p = self.run_op("reprovar", "--agente", "mesma", "--erro", "visual: x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        depois = self.linhas()
+        self.assertEqual(depois[0], antes[0])
+        self.assertEqual(json.loads(depois[1])["resultado"], "corrigido")
+
+    def test_falhou_e_escalado_mantem_o_resultado(self):
+        for i, res in enumerate(("falhou", "escalado")):
+            rid = "bbbb000%d" % i
+            self.grava("front", "sonnet", res, id=rid)
+            p = self.run_op("reprovar", "--id", rid, "--erro", "visual: x")
+            self.assertEqual(p.returncode, 0, p.stderr)
+            d = [json.loads(l) for l in self.linhas() if rid in l][0]
+            self.assertEqual((d["resultado"], d["classes"], d["reprovado"]), (res, ["visual"], True))
+            self.assertGreaterEqual(d["rodadas"], 1)
+
+    def test_corrigido_acumula(self):
+        self.grava("front", "sonnet", "corrigido", id="aaaa1111", erros=["a"], classes=["borda"])
+        p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", "visual: b")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        d = json.loads(self.linhas()[0])
+        self.assertEqual((d["resultado"], d["rodadas"], d["erros"], d["classes"]),
+                         ("corrigido", 2, ["a", "b"], ["borda", "visual"]))
+
+    def test_duas_vezes_e_sem_campo_rodadas(self):
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        with io.open(self.registro, "w", encoding="utf-8", newline="") as f:
+            f.write(json.dumps({"id": "aaaa1111", "tipo": "front", "modelo": "sonnet",
+                                "resultado": "de_primeira"}) + "\n")
+        for t in ("visual: a", "visual: b"):
+            p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", t)
+            self.assertEqual(p.returncode, 0, p.stderr)
+        d = json.loads(self.linhas()[0])
+        self.assertEqual((d["rodadas"], d["classes"], len(d["erros"])), (2, ["visual"], 2))
+
+    def test_recusas_deixam_arquivo_igual(self):
+        self.grava("front", "sonnet", "anulado", id="anul1111", tarefa="t")
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111", tarefa="t2")
+        antes = self.le(self.registro)
+        casos = [
+            ("--id", "anul1111", "--erro", "visual: x"),
+            ("--id", "aaaa1111", "--erro", "ficou feio"),
+            ("--id", "naoexiste", "--erro", "visual: x"),
+            ("--erro", "visual: x"),
+            ("--id", "aaaa1111", "--agente", "t2", "--erro", "visual: x"),
+            ("--id", "aaaa1111"),
+        ]
+        for c in casos:
+            p = self.run_op("reprovar", *c)
+            self.assertEqual(p.returncode, 13, (c, p.stdout))
+            self.assertNotIn("Traceback", p.stderr)
+            self.assertEqual(self.le(self.registro), antes, c)
+        p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", "ficou feio")
+        self.assertIn("Classes:", p.stderr)
+        self.assertIn("Nada foi alterado.", p.stderr)
+
+    def test_bom_crlf_fim_sem_quebra(self):
+        def lin(i):
+            return json.dumps({"id": i, "tipo": "front", "modelo": "sonnet",
+                               "resultado": "de_primeira", "rodadas": 0}).encode("utf-8")
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        with io.open(self.registro, "wb") as f:
+            f.write(b"\xef\xbb\xbf" + lin("a") + b"\r\n" + lin("b") + b"\r\n" + lin("c"))
+        p = self.run_op("reprovar", "--id", "b", "--erro", "visual: x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        with io.open(self.registro, "rb") as f:
+            depois = f.read()
+        partes = depois.split(b"\r\n")
+        self.assertEqual(len(partes), 3)
+        self.assertEqual(partes[0], lin("a"))
+        self.assertEqual(partes[2], lin("c"))
+        self.assertTrue(json.loads(partes[1])["reprovado"])
+        self.assertFalse(depois.endswith(b"\n"))
+
+    def test_byte_invalido(self):
+        os.makedirs(os.path.dirname(self.registro), exist_ok=True)
+        bruto = b'{"id": "aaaa1111"}\n\xff\xfe lixo\n'
+        with io.open(self.registro, "wb") as f:
+            f.write(bruto)
+        p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", "visual: x")
+        self.assertEqual(p.returncode, 13, p.stdout)
+        self.assertIn("Nada foi alterado", p.stderr)
+        self.assertNotIn("Traceback", p.stderr)
+        with io.open(self.registro, "rb") as f:
+            self.assertEqual(f.read(), bruto)
+
+    def test_copia_antes_de_reprovar(self):
+        self.grava("front", "sonnet", "de_primeira", id="aaaa1111")
+        antes = self.le(self.registro)
+        p = self.run_op("reprovar", "--id", "aaaa1111", "--erro", "visual: x")
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(self.le(self.registro + ".antes-de-reprovar"), antes)
+
+    def test_ficha_deixa_de_contar_de_primeira(self):
+        for i in range(4):
+            self.grava("front", "sonnet", "de_primeira", brief=3, id="id00000%d" % i)
+        antes = json.dumps(self.ficha_json("front"), sort_keys=True)
+        for i in range(3):
+            p = self.run_op("reprovar", "--id", "id00000%d" % i, "--erro", "visual: feio")
+            self.assertEqual(p.returncode, 0, p.stderr)
+        depois = json.dumps(self.ficha_json("front"), sort_keys=True)
+        self.assertNotEqual(antes, depois)
+        self.assertNotIn("4/4", depois)
+
+
 if __name__ == "__main__":
     unittest.main()

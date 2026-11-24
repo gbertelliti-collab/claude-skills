@@ -175,6 +175,18 @@ A análise foi feita em 23/11/2026, com o registro em 267 tarefas de 12 projetos
 
 O tamanho é contado até a primeira entrega porque a correção soma respostas no mesmo transcript e faria a tarefa que errou parecer maior. Tamanho do brief não previu erro: brief mais longo acertou mais.
 
+### Design é a exceção
+
+Em 24/11/2026 o registro dizia que as telas iam bem (14 de 16 tarefas de tela de primeira nas 24 horas anteriores) e o dono achou o visual de um site inteiro ruim. Os dois estavam certos, porque mediam coisas diferentes: "de primeira" era passar no aceite, e o aceite era build, teste e medida por script. A prévia que o dono tinha aprovado foi refeita por 13 operários Sonnet, um pedaço cada, com brief de texto, sem skill de design aberta. O plugin passou a tratar design assim:
+
+| o que o uso mostrou | o que o plugin faz agora |
+|---|---|
+| Tela que o dono julga pelo olho era registrada como `front`, e a ficha mandava Sonnet (e já propunha testar Haiku). | Tipo próprio, `design`: rota Opus, sem promoção para modelo menor e sem experimento. A ficha traz a linha `regra:`. |
+| O visual de uma tela foi dividido entre vários operários, e nenhum tinha a tela inteira na mão. | Um autor por tela: o chefe desenha a primeira com a skill de design aberta; com a direção aprovada, um `orq-designer` por tela. Operário Sonnet só liga dados depois do visual aprovado. |
+| A prévia aprovada foi portada "só pelo conteúdo e o tom". | A prévia é o contrato: portar é copiar o visual e provar lado a lado com print em desktop e celular. |
+| O registro não tinha como saber que o dono reprovou depois do "pronto". | `operarios.py reprovar` tira o "de primeira" da tarefa e grava o erro com classe; três reprovações do mesmo tipo viram aviso na ficha. |
+| O chefe só descobria o erro de rota depois. | O hook de despacho avisa na hora: design em Sonnet ou Haiku, design para o `orq-executor`, brief de design sem print ou sem referência, e `front` com cara de design. |
+
 > [!NOTE]
 > Leia os números com o tamanho que eles têm: um usuário e poucos dias de uso. "De primeira" quer dizer que passou na primeira conferência do chefe, que roda o aceite ele mesmo. Custo é token ponderado pelo preço de API de cada modelo, não fatura. A sua ficha começa vazia e vai chegar aos seus próprios números.
 
@@ -203,6 +215,7 @@ O tamanho é contado até a primeira entrega porque a correção soma respostas 
 |---|---|---|---|
 | `orq-leitor` | Haiku | busca, leitura, pesquisa com fonte | editar arquivo |
 | `orq-executor` | Sonnet | código, teste, script de dados, tela, texto, só nos arquivos do escopo | decidir design, sair do escopo |
+| `orq-designer` | Opus | uma tela inteira que o dono julga pelo olho: abre a skill de design e prova por print | dividir a tela, inventar direção visual sem referência |
 | `orq-revisor` | Sonnet (Opus em dinheiro e segurança) | revisar a entrega de outro e dar veredito | consertar |
 | `orq-mestre` | Opus | tocar uma frente inteira no modo god | mudar o contrato entre as frentes |
 | `orq-engenheiro` | Fable | as 3 visitas do modo god | despachar operário, editar código |
@@ -335,7 +348,7 @@ A configuração `skillOverrides` do Claude Code não vale para skill de plugin,
 ### O motor
 
 ```bash
-python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
+python <pasta da skill>/operarios.py <status|ficha|registrar|reclassificar|reprovar|conferir|retomar|despacho|resumo|atualizar|atualizacao>
 python <pasta da skill>/custo.py [--do-registro] [--precos tabela.json] [--mostrar-precos]
 ```
 
@@ -393,7 +406,7 @@ operarios: 276 tarefas, 231 de primeira, 41 corrigidas, 0 escaladas, 4 falharam,
 .claude-plugin/marketplace.json     o marketplace (gbertelli-skills)
 plugins/orquestrador/
   .claude-plugin/plugin.json        o plugin (sem número de versão: cada commit é uma versão)
-  agents/                           os 5 papéis orq-*, cada um com sua cor na lista de tarefas
+  agents/                           os 6 papéis orq-*, cada um com sua cor na lista de tarefas
   hooks/                            retomada depois de compactar; aviso de atualização desligada; aviso na hora do despacho
   skills/
     orquestrador/

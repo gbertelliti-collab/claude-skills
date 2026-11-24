@@ -74,6 +74,8 @@ Leia so pra mudar uma regra ou um limiar. Nao e pra carregar em todo trabalho.
 
 Precos de API citados em qualquer lugar mudam: confira os precos atuais antes de usar os numeros.
 
+- Medido em 24/11/2026: "de primeira" so vale o que o ACEITE mede. Num site inteiro, 14 de 16 tarefas de tela passaram de primeira (aceite de build, teste e script) e o dono reprovou o visual; a previa aprovada tinha sido refeita por 13 operarios Sonnet, um pedaco cada, sem skill de design. Por isso `design` e tipo proprio (um autor por tela, opus, prova por print, sem descida de modelo) e existe o comando `reprovar`, que leva o veredito do dono pro registro.
+
 ## 6. O que nao tem evidencia
 
 - Ordem exata da escada de correcao e todos os limiares numericos.

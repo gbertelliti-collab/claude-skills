@@ -75,10 +75,20 @@ Os dois mestres terminaram. Relatorio de mestre e alegacao, mas quem confere a m
 4. Veredito: PODE SUBIR, ou VOLTA pra frente X com o achado exato (teto de 2 voltas por frente; depois replaneje a obra).
 5. Fechamento (quem esta na sessao): registrar os mestres (`operarios.py registrar --agente "[opus:coordenacao] mestre A: ..." --frente A ...`), `conferir` (cada mestre com os netos embaixo, todos no modelo pedido), `resumo --por-frente`, `atualizar`; commit por caminho, push e deploy pelas regras do projeto; relatorio pro usuario com o que nao foi verificado.
 
+## Obra com tela que o dono julga pelo olho
+
+Medido no uso real: numa obra de site em modo god, a previa aprovada pelo dono virou texto na planta, os mestres fatiaram as telas entre 13 operarios Sonnet e o dono achou o visual ruim, com o registro marcando quase tudo de primeira. Regras (secao Design do `SKILL.md`):
+
+- O visual NAO passa pela planta como texto. A planta aponta o ARQUIVO da referencia aprovada (previa, DESIGN.md, print) e diz que ele e o contrato: portar e copiar o visual, nao "o conteudo e o tom".
+- A 1a tela e do chefe da obra (ou de um `orq-designer`), com a skill de design aberta, e vai pro dono ANTES de os mestres replicarem. Sem o "gostei" a frente de tela nao abre.
+- Mestre nao manda operario sonnet desenhar tela: cada tela que o dono vai julgar e tipo `design`, um `orq-designer` (`opus`) por tela, ACEITE por print em desktop e celular ao lado da referencia. Operario sonnet entra depois, pra ligar dados (`front`).
+- O `orq-designer` conta no teto de operarios do mestre e nao abre agente.
+- Vistoria: o engenheiro olha os prints das telas ao lado da referencia, nao so o aceite global.
+
 ## Tetos
 
 - 2 mestres. Por mestre: 3 operarios ao mesmo tempo e 8 despachos (a planta pode mudar).
-- 3 andares e acabou: os papeis `orq-leitor`, `orq-executor`, `orq-revisor` e `orq-engenheiro` nao tem a ferramenta de abrir agente, e o mestre e proibido de chamar agente generico.
+- 3 andares e acabou: os papeis `orq-leitor`, `orq-executor`, `orq-designer`, `orq-revisor` e `orq-engenheiro` nao tem a ferramenta de abrir agente, e o mestre e proibido de chamar agente generico.
 - Mestre que bate no teto para e relata; nao estoura.
 
 ## Onde o modo god quebra

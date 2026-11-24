@@ -7,9 +7,9 @@ description: Usa em TODO trabalho com 2 ou mais partes independentes, ANTES de c
 
 A sessao e o chefe: pensa, decide, confere e integra. Operarios Haiku e Sonnet leem e digitam. Toda tarefa delegada vira 1 linha no registro; a ficha que sai do registro diz quem recebe a proxima tarefa daquele tipo e quanto detalhe o brief leva.
 
-Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|reclassificar|conferir|retomar|despacho|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
+Motor: `python "${CLAUDE_SKILL_DIR}/operarios.py" <status|ficha|registrar|reclassificar|reprovar|conferir|retomar|despacho|resumo|atualizar|atualizacao>` (`--help` em cada um; sem `python` na maquina, use `python3` ou `py -3`). `atualizacao` diz se o plugin recebe versao nova sozinho; `atualizacao --ligar` so depois de o usuario aceitar. O registro fica em `~/.claude/orquestrador/registro.jsonl` (a variavel `ORQ_REGISTRO` muda o caminho). A ficha em arquivo so e gravada se `ORQ_FICHA` apontar pra um arquivo `.md`. Obra grande em duas frentes: `modo-god.md` nesta pasta. O porque de cada regra, com fonte: `fundamentos.md` (so pra mudar regra).
 
-Os papeis (`orq-leitor`, `orq-executor`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
+Os papeis (`orq-leitor`, `orq-executor`, `orq-designer`, `orq-revisor`, `orq-mestre`, `orq-engenheiro`) vem no mesmo plugin. Como plugin, o `subagent_type` leva o prefixo do plugin (`orquestrador:orq-leitor`); no resto do texto o prefixo e omitido.
 
 ## Regra de uso
 
@@ -42,6 +42,19 @@ Operario nao deixa a resposta mais inteligente: ele da paralelismo, olhar novo e
 
 Papeis sao sob demanda, nao esteira: nao rode leitor -> executor -> testador -> revisor por reflexo.
 
+## Design: a excecao ao "delega tudo"
+
+Medido no uso real (24/11/2026): um site inteiro saiu "de primeira" no registro (14 de 16 tarefas de tela) e o dono achou o visual ruim. A previa que ele tinha aprovado foi refeita por 13 operarios Sonnet, um pedaco cada, com brief de texto ("nao copie o layout, so o conteudo e o tom"), sem skill de design aberta e com ACEITE de build e script. Passar no ACEITE nao e ficar bonito, e visual fatiado nao tem autor.
+
+- Tela que o dono julga pelo OLHO e tipo `design`, nao `front`: pagina ou tela nova, redesenho, acabamento visual, portar uma previa aprovada pro codigo.
+- Design nao se fatia: uma tela inteira tem UM autor do comeco ao fim. Quem desenha e o chefe, com a skill de design aberta (a que o usuario usa no projeto; ex.: `frontend-design`) e a referencia na mao. Com varias telas e a direcao ja aprovada: um `orquestrador:orq-designer` (`opus`) por tela, em paralelo. Nunca sonnet nem haiku, nunca `orq-executor` (ele nao abre skill).
+- A previa aprovada e o contrato. Portar pra codigo e COPIAR o visual (medidas, espacamento, tipografia, cor, ordem, peso de cada bloco) e provar lado a lado com print. "So o conteudo e o tom" joga fora o que o dono aprovou. Layout de largura fixa vira responsivo pelas mesmas proporcoes, nao por um desenho novo.
+- ACEITE de design e print: desktop e celular, pagina inteira, visto pelo chefe ao lado da referencia. Build, lint, teste e medida por script provam que funciona, nao que ficou bom.
+- A 1a tela vai pro dono ANTES de replicar. So depois do "gostei" entram as outras telas e os operarios sonnet (tipo `front`: ligar dado, estado, repeticao do padrao pronto).
+- Portao de acabamento da skill de design reprovou: volta pro autor da tela. O brief nunca manda "anota e segue".
+- O dono reprovou depois do "pronto" (qualquer tipo, mas principalmente tela): `python "${CLAUDE_SKILL_DIR}/operarios.py" reprovar --agente "<descricao do despacho>" --erro "visual: <o que ele disse>"`. A tarefa deixa de contar como de primeira; sem isso a ficha continua achando que aquele caminho funciona.
+- Continua delegado numa obra de design: pesquisa de referencia, fotos e licencas, servidor e dados, painel interno sem exigencia visual, teste, revisao.
+
 ## Economia de tokens
 
 Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + escrita de cache = 80% do custo), nao o que se escreve (20%). Num exemplo medido, quem mais gastou foi o agente generico (perto de metade, quase todo no modelo maior), depois o chefe (cerca de um terco, com contexto de centenas de milhares de tokens por resposta); os operarios `orq-*` somaram poucos por cento.
@@ -63,7 +76,8 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 | `busca` | achar onde esta: arquivo, simbolo, uso. A resposta sao ponteiros |
 | `leitura` | ler e resumir material dado: codigo, log, doc, issue |
 | `pesquisa-web` | fato de fora da maquina, com fonte |
-| `front` | tela, componente, estilo (mesmo quando e repeticao) |
+| `front` | ligar tela que ja tem visual definido: componente, estado, dado, comportamento (mesmo quando e repeticao) |
+| `design` | tela que o dono julga pelo olho: pagina ou tela nova, redesenho, acabamento, portar previa aprovada (secao Design) |
 | `teste` | escrever ou ajustar teste |
 | `dados-sql` | query, migration, script de dados |
 | `edicao-logica` | resto do codigo que exige entender: funcao + chamadas, refactor, feature |
@@ -74,7 +88,7 @@ Em uso real medido, o que custa e RELER o contexto a cada resposta (leitura + es
 | `coordenacao` | mestre de obras e engenheiro do modo god |
 | `outro` | o que nao couber acima |
 
-Na duvida entre mecanica e logica: logica. Tipo errado suja a ficha do tipo certo.
+Na duvida entre mecanica e logica: logica. Na duvida entre front e design: se o dono vai abrir e dizer "ficou bonito" ou "ficou feio", e design. Tipo errado suja a ficha do tipo certo.
 
 Tamanho: um OBJETIVO por tarefa de escrita. Em uso real medido, escrita que o operario fechou em menos de 30 respostas ate a primeira entrega passou de primeira 78% das vezes; com 30 ou mais, 45%, e a correcao custou mais de um quarto de toda a saida dos executores. O tamanho do brief nao preve isso (brief mais longo acertou MAIS); o que preve e a tarefa carregar varios objetivos. Sinais de que sao duas tarefas: titulo com "e" ou com lista ("regra X, tela Y e prova Z"), mais de um ACEITE, conserto de varios achados sem relacao, investigar E consertar. Quebre por objetivo; o que depende do anterior vai em sequencia, no mesmo dono de arquivo.
 
@@ -83,7 +97,7 @@ Escala: fato simples = 1 leitor; comparacao ou mapa de repo = 2 a 4 leitores; co
 **3. Rota.** Use modelo, brief e effort da ficha; pode divergir com motivo de 1 linha.
 
 - O que o usuario disse na sessao sobre modelo ou quantidade de agentes vence a ficha na hora, e a regra do projeto tambem. Registre do mesmo jeito, com o motivo.
-- Tarefa que so da pra conferir por opiniao (texto, design, decisao) nao vai pro modelo mais barato: descer de modelo so compensa quando a conferencia pega o erro.
+- Tarefa que so da pra conferir por opiniao (texto, design, decisao) nao vai pro modelo mais barato: descer de modelo so compensa quando a conferencia pega o erro. `design` nunca desce nem entra em experimento (a ficha traz a linha `regra:`).
 - Modelo maior em execucao nao compra acerto. Em uso real medido, o modelo maior como executor (tarefa grande, brief nivel 2) passou de primeira 9 de 24 vezes e gastou metade de toda a saida; o intermediario, com brief nivel 3 e tarefa pequena, 3 em cada 4. Tarefa dificil pede brief mais desenhado e tarefa menor ANTES de modelo maior. O `resumo` mostra `opus em execucao: ...` quando isso acontece.
 - `experimento:` na ficha = ela ainda nao sabe se o modelo mais barato aguenta aquele tipo. Aceite nas tarefas mais mecanicas do tipo (a repeticao), com ACEITE executavel, ate fechar os 4 (`feitos K de 4`), e registre com `--experimento`. Sem isso o Sonnet faz tudo e a ficha nunca aprende o que o Haiku aguenta.
 
@@ -115,6 +129,7 @@ Brief DESENHADO e o padrao: o operario nao conhece a conversa, o projeto nem a s
 |---|---|
 | busca, leitura, pesquisa-web; debug que so le log e codigo | `orquestrador:orq-leitor` |
 | edicao-*, teste, dados-sql, front, texto, outro; debug que mexe | `orquestrador:orq-executor` |
+| design | o chefe faz; com a direcao aprovada, `orquestrador:orq-designer` (um por tela, `model: "opus"`) |
 | revisao | `orquestrador:orq-revisor` |
 | coordenacao (so no modo god) | `orquestrador:orq-mestre`, `orquestrador:orq-engenheiro` |
 
@@ -136,6 +151,7 @@ Brief DESENHADO e o padrao: o operario nao conhece a conversa, o projeto nem a s
 - Arquivos tocados x ESCOPO (`git diff --name-only`); fora do escopo e revertido ou explicado.
 - "Testado"/"feito" sem saida real colada = nao feito. FEITO_COM_RESSALVA, TRAVADO e PARCIAL = nao passou (passo 7). FALTA_CONTEXTO = o chefe responde ou decide e reenvia; nao conta como rodada.
 - Fato mecanico (existe? compila? quantas ocorrencias?) voce checa com 1 comando; nao gaste revisor nisso.
+- Tela: print em desktop e celular visto por voce (ao lado da referencia, se houver) antes de dizer pronto. Tipo `design` nao fecha sem isso.
 - Pesquisa e leitura: confira por amostra 1 ou 2 afirmacoes que pesam na decisao.
 - Revisor independente quando ha JULGAMENTO em jogo: codigo nao trivial, ou dinheiro/folha/seguranca/migracao (ai com `opus`). Mudanca mecanica provada por grep ou print nao precisa. Nunca o proprio executor. Ele revisa tambem as CORRECOES (regressao, correcao que nao corrige, teste que nao prova).
 - Mensagem de erro, codigo de status ou nome de campo que voce decidiu no brief: confira quem CONSOME do outro lado antes de despachar.
@@ -181,6 +197,8 @@ python "${CLAUDE_SKILL_DIR}/operarios.py" registrar --agente "[sonnet:revisao] r
 
 Tres andares. O ENGENHEIRO (Fable) nao fica na obra: faz 3 visitas (a analise que vira a planta com o contrato entre duas frentes, a consulta quando um mestre trava numa decisao, a vistoria no fim). 2 MESTRES DE OBRAS (`orq-mestre`, Opus) tocam tudo: rodam este ciclo cada um na sua frente, com os OPERARIOS Haiku e Sonnet recebendo tudo desenhado. So quando o usuario pedir, ou com 2 frentes de arquivos separados que andam em paralelo e umas 8 tarefas ou mais. Regra do projeto vence.
 
+Obra com tela que o dono vai julgar pelo olho: o visual NAO passa pela planta como texto. A tela de referencia aprovada e o contrato da frente; a 1a tela e do chefe (ou de um `orq-designer`) e vai pro dono antes de os mestres replicarem; mestre nao manda operario sonnet desenhar tela (secao Design).
+
 ## Erros comuns
 
 | erro | o que fazer |
@@ -197,10 +215,12 @@ Tres andares. O ENGENHEIRO (Fable) nao fica na obra: faz 3 visitas (a analise qu
 | subir pro modelo maior porque a tarefa e dificil | brief nivel 3 e tarefa menor primeiro |
 | repetir a mesma correcao no mesmo operario | sem progresso = operario novo um modelo acima |
 | operario decidindo design | o brief traz a decisao; FALTA_CONTEXTO volta pro chefe |
+| visual de uma tela fatiado entre operarios, ou previa aprovada portada "so pelo conteudo" | um autor por tela (chefe ou `orq-designer`), previa como contrato, print lado a lado |
+| tela registrada `de_primeira` porque o build passou | ACEITE de design e print visto pelo chefe; dono reprovou depois = `reprovar` |
 
 ## Limites
 
-- O Claude Code deixa subagente abrir subagente ate 3 andares abaixo da sessao e 20 rodando ao mesmo tempo. Aqui: `orq-leitor`, `orq-executor`, `orq-revisor` e `orq-engenheiro` nao tem a ferramenta de abrir agente; so o `orq-mestre` do modo god abre, e so um andar.
+- O Claude Code deixa subagente abrir subagente ate 3 andares abaixo da sessao e 20 rodando ao mesmo tempo. Aqui: `orq-leitor`, `orq-executor`, `orq-revisor` e `orq-engenheiro` nao tem a ferramenta de abrir agente, e o `orq-designer` herda as outras ferramentas (skill, navegador) com essa negada (`disallowedTools: Agent`); so o `orq-mestre` do modo god abre, e so um andar.
 - Agente aberto sem `model`: a doc (sub-agents, "Choose a model") usa o primeiro destes: `model` da chamada > `model` do frontmatter > `CLAUDE_CODE_SUBAGENT_MODEL` > modelo de quem abriu. Um `orq-*` sem `model` cai no frontmatter dele; um generico cai na env (aqui `sonnet`) ou no modelo de quem abriu; `Explore` e `Plan` ignoram a env. Passe `model` em toda chamada mesmo assim: o `conferir` acusa `SEM-MODELO` e `ANDAR-3`.
 - A skill nao troca o modelo da sessao: o chefe e o modelo da sessao.
 - Modelo ignorado no subagente tem bug aberto (anthropics/claude-code#43869): o `conferir` le o modelo real no transcript.
